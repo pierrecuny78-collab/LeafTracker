@@ -1,6 +1,10 @@
 package com.leafvibe.leaftracker
 
 import android.app.Activity
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
 import android.app.AlertDialog
 import android.os.Bundle
 import android.text.InputType
@@ -24,6 +28,8 @@ class MainActivity : Activity() {
     private var unlocked = false
     private var relock = false
     private var vaultReady = false
+    private var pendingPhoto = ""
+    private var pendingPhotoView: ImageView? = null
     private val green = 0xFF236B4B.toInt()
     private val ink = 0xFF183329.toInt()
 
@@ -68,6 +74,21 @@ class MainActivity : Activity() {
         try { data = store.read(); vaultReady = true; render() }
         catch (_: Exception) { vaultReady = false; val l = frame("Coffre indisponible"); text(l, "Déchiffrement impossible. Aucune donnée vide ne sera écrite par-dessus le coffre existant. Ne désinstalle pas l'application et n'efface pas ses données.") }
     }
+    override fun onActivityResult(requestCode:Int,resultCode:Int,dataIntent:Intent?) {
+        super.onActivityResult(requestCode,resultCode,dataIntent)
+        if(requestCode==701 && resultCode==Activity.RESULT_OK) {
+            val uri=dataIntent?.data ?: return
+            try { contentResolver.openInputStream(uri)?.use { stream ->
+                val bmp=BitmapFactory.decodeStream(stream) ?: return
+                val width=minOf(640,bmp.width)
+                val scaled=Bitmap.createScaledBitmap(bmp,width,(bmp.height.toFloat()*width/bmp.width).toInt().coerceAtLeast(1),true)
+                val out=java.io.ByteArrayOutputStream()
+                scaled.compress(Bitmap.CompressFormat.JPEG,78,out)
+                pendingPhoto=Base64.encodeToString(out.toByteArray(),Base64.NO_WRAP)
+                pendingPhotoView?.setImageBitmap(scaled)
+            }; toast("Photo ajoutée à la fiche") } catch(_:Exception) { toast("Impossible de lire cette image") }
+        }
+    }
     private fun render() {
         val l = frame("LeafTracker")
         val bar = LinearLayout(this).apply { orientation = 0; gravity = Gravity.CENTER_VERTICAL }
@@ -93,31 +114,65 @@ class MainActivity : Activity() {
     private fun arr(k:String)=data.optJSONArray(k) ?: JSONArray()
     private fun shown(o:JSONObject)=space=="Tous" || o.optString("workspace","Privé")==space
     private fun identitiesUI() {
-        text(content,"LeafIdentity · Identités",21,true); button(content,"+ Ajouter une personne"){ identityDialog() }
-        var n=0
-        for(i in 0 until arr("identities").length()) { val x=arr("identities").getJSONObject(i); if(!shown(x)) continue; n++
-            card("${x.optString("name")}\n${x.optString("category")} · ${x.optString("workspace")}\n${x.optString("description")}") { identityActions(x) }
+        text(content,"LeafIdentity · Carnet des identités",21,true)
+        text(content,"Des fiches complètes pour la famille, les amis, l'entourage et les collègues.")
+        button(content,"＋ Créer une identité"){ identityDialog() }
+        var count=0
+        for(i in 0 until arr("identities").length()) {
+            val x=arr("identities").getJSONObject(i); if(!shown(x)) continue; count++
+            val line=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL;setPadding(10,10,10,10);setBackgroundColor(0xFFE5EFE8.toInt())}
+            val photo=x.optString("photo")
+            if(photo.isNotBlank()) try { val bytes=Base64.decode(photo,Base64.DEFAULT); val bmp=BitmapFactory.decodeByteArray(bytes,0,bytes.size); if(bmp!=null) line.addView(ImageView(this).apply{setImageBitmap(bmp);scaleType=ImageView.ScaleType.CENTER_CROP},LinearLayout.LayoutParams(72,72).apply{rightMargin=10}) } catch(_:Exception){}
+            val info=LinearLayout(this).apply{orientation=1}
+            text(info,x.optString("firstName")+" "+x.optString("name"),17,true)
+            text(info,x.optString("category")+" · "+x.optString("workspace")+"\n"+x.optString("jobTitle"))
+            line.addView(info,LinearLayout.LayoutParams(0,-2,1f)); line.setOnClickListener{identityActions(x)}
+            content.addView(line,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=8})
         }
-        if(n==0) text(content,"Aucune identité. Ajoute une personne pour commencer.")
+        if(count==0) text(content,"Aucune identité. Crée ta première fiche pour commencer.")
     }
     private fun identityDialog(old:JSONObject?=null) {
-        val name=input("Nom et prénom"); val cat=input("Catégorie : famille, ami, collègue…"); val desc=input("Description"); val goal=input("Objectif / ambition")
-        val ws=Spinner(this).apply { adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel")) }
-        if(old!=null) { name.setText(old.optString("name")); cat.setText(old.optString("category")); desc.setText(old.optString("description")); goal.setText(old.optString("goal")); ws.setSelection(if(old.optString("workspace")=="Professionnel")1 else 0) }
-        val box=column(name,cat,desc,goal,ws)
-        AlertDialog.Builder(this).setTitle(if(old==null)"Nouvelle identité" else "Modifier l'identité").setView(box).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
-            if(name.text.isNullOrBlank()) toast("Nom obligatoire") else {
-                val x=old ?: JSONObject().put("id",UUID.randomUUID().toString())
-                x.put("name",name.text.toString()).put("category",cat.text.toString()).put("description",desc.text.toString()).put("goal",goal.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé")
-                if(old==null) arr("identities").put(x); data.put("identities",arr("identities")); save(); render()
+        pendingPhoto=old?.optString("photo","") ?: ""
+        val photoView=ImageView(this).apply{layoutParams=LinearLayout.LayoutParams(112,112).apply{gravity=Gravity.CENTER};scaleType=ImageView.ScaleType.CENTER_CROP;setBackgroundColor(0xFFDCE8DF.toInt())}
+        if(pendingPhoto.isNotBlank()) try { val b=Base64.decode(pendingPhoto,Base64.DEFAULT); photoView.setImageBitmap(BitmapFactory.decodeByteArray(b,0,b.size)) } catch(_:Exception){}
+        pendingPhotoView=photoView
+        val photoButton=Button(this).apply{text="Ajouter / changer la photo (JPG, PNG…)";isAllCaps=false;setOnClickListener{startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply{addCategory(Intent.CATEGORY_OPENABLE);type="image/*"},701)}}
+        fun field(key:String,hint:String)=input(hint).apply{setText(old?.optString(key,"") ?: "")}
+        val last=field("name","Nom"); val first=field("firstName","Prénom")
+        val age=field("age","Âge"); val birthday=field("birthday","Date d'anniversaire (JJ/MM/AAAA)")
+        val home=field("homeAddress","Adresse personnelle"); val job=field("jobTitle","Métier / fonction"); val work=field("workAddress","Adresse du lieu de travail")
+        val category=field("category","Catégorie : famille, ami, collègue…")
+        val personality=field("personality","Personnalité, caractère, tempérament")
+        val emotions=field("emotions","Émotions, sensibilité, humeur habituelle")
+        val interests=field("interests","Goûts, passions, centres d'intérêt")
+        val habits=field("habits","Habitudes et préférences")
+        val goals=field("goal","Objectifs, projets et ambitions")
+        val description=field("description","Autres informations / histoire")
+        val privateBox=CheckBox(this).apply{text="Privé";isChecked=old?.optString("workspace","Privé")!="Professionnel"}
+        val proBox=CheckBox(this).apply{text="Professionnel";isChecked=old?.optString("workspace")=="Professionnel"}
+        privateBox.setOnCheckedChangeListener{_,v->if(v)proBox.isChecked=false else if(!proBox.isChecked)privateBox.isChecked=true}
+        proBox.setOnCheckedChangeListener{_,v->if(v)privateBox.isChecked=false else if(!privateBox.isChecked)proBox.isChecked=true}
+        val form=LinearLayout(this).apply{orientation=1;setPadding(22,12,22,12)}
+        text(form,"PHOTO DE PROFIL",12,true);form.addView(photoView);form.addView(photoButton)
+        text(form,"IDENTITÉ",13,true);form.addView(last);form.addView(first);form.addView(age);form.addView(birthday)
+        text(form,"ESPACE",13,true);form.addView(privateBox);form.addView(proBox)
+        text(form,"COORDONNÉES",13,true);form.addView(home);form.addView(job);form.addView(work)
+        text(form,"PERSONNALITÉ ET VIE PERSONNELLE",13,true);form.addView(personality);form.addView(emotions);form.addView(interests);form.addView(habits);form.addView(goals);form.addView(description);form.addView(category)
+        val scroll=ScrollView(this).apply{addView(form)}
+        AlertDialog.Builder(this).setTitle(if(old==null)"Créer une identité" else "Modifier l'identité").setView(scroll).setNegativeButton("Annuler",null).setPositiveButton(if(old==null)"Créer la fiche" else "Enregistrer"){_,_->
+            if(last.text.isNullOrBlank()||first.text.isNullOrBlank()) toast("Le nom et le prénom sont obligatoires") else {
+                val x=old?:JSONObject().put("id",UUID.randomUUID().toString())
+                x.put("name",last.text.toString()).put("firstName",first.text.toString()).put("age",age.text.toString()).put("birthday",birthday.text.toString()).put("homeAddress",home.text.toString()).put("jobTitle",job.text.toString()).put("workAddress",work.text.toString()).put("personality",personality.text.toString()).put("emotions",emotions.text.toString()).put("interests",interests.text.toString()).put("habits",habits.text.toString()).put("goal",goals.text.toString()).put("description",description.text.toString()).put("category",category.text.toString()).put("workspace",if(proBox.isChecked)"Professionnel" else "Privé").put("photo",pendingPhoto)
+                if(old==null)arr("identities").put(x);data.put("identities",arr("identities"));save();render()
             }
         }.show()
     }
     private fun identityActions(x:JSONObject) {
-        AlertDialog.Builder(this).setTitle(x.optString("name")).setItems(arrayOf("Consulter","Modifier","Supprimer")){_,i-> when(i){
-            0->AlertDialog.Builder(this).setMessage("Catégorie : ${x.optString("category")}\nEspace : ${x.optString("workspace")}\n\n${x.optString("description")}\n\nObjectif : ${x.optString("goal")}").setPositiveButton("Fermer",null).show()
+        AlertDialog.Builder(this).setTitle(x.optString("firstName")+" "+x.optString("name")).setItems(arrayOf("Consulter la fiche","Modifier","Dupliquer","Supprimer")){_,i->when(i){
+            0->AlertDialog.Builder(this).setTitle(x.optString("firstName")+" "+x.optString("name")).setMessage("Âge : "+x.optString("age")+"\nAnniversaire : "+x.optString("birthday")+"\nEspace : "+x.optString("workspace")+"\nAdresse : "+x.optString("homeAddress")+"\nMétier : "+x.optString("jobTitle")+"\nTravail : "+x.optString("workAddress")+"\n\nPersonnalité : "+x.optString("personality")+"\nÉmotions : "+x.optString("emotions")+"\nGoûts : "+x.optString("interests")+"\nHabitudes : "+x.optString("habits")+"\nObjectifs : "+x.optString("goal")+"\n\n"+x.optString("description")).setPositiveButton("Fermer",null).setNeutralButton("Modifier"){_,_->identityDialog(x)}.show()
             1->identityDialog(x)
-            2->AlertDialog.Builder(this).setMessage("Supprimer cette identité ? Les relations associées ne sont pas supprimées automatiquement.").setNegativeButton("Annuler",null).setPositiveButton("Supprimer"){_,_->remove("identities",x.optString("id"));render()}.show()
+            2->{val c=JSONObject(x.toString()).put("id",UUID.randomUUID().toString()).put("name",x.optString("name")+" (copie)");arr("identities").put(c);data.put("identities",arr("identities"));save();render()}
+            3->AlertDialog.Builder(this).setMessage("Supprimer cette identité ?").setNegativeButton("Annuler",null).setPositiveButton("Supprimer"){_,_->remove("identities",x.optString("id"));render()}.show()
         }}.show()
     }
     private fun socialUI() {
