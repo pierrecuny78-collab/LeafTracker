@@ -1,24 +1,29 @@
 # 🌿 LeafTracker
 
-**Version 0.1.0 — première base Android hors ligne**
+**Version 0.2.0 — fiches d'identité enrichies et navigation Leaf**
 
-Application locale de gestion des identités, relations, espaces privés/professionnels, notes et événements de calendrier de l'écosystème LeafVibe.
+Application Android locale de gestion des personnes, relations, notes et événements.
 
-## Fonctionnalités 0.1.0
-- PIN obligatoire de 4 à 8 chiffres, dérivé PBKDF2-HMAC-SHA256 avec sel aléatoire.
-- Verrouillage après cinq tentatives incorrectes avec temporisation progressive ; verrouillage à la mise en arrière-plan et manuel.
+## Nouveautés 0.2.0
+- Nouvelle icône de lancement LeafTracker.
+- Fiches d'identité avec photo JPG/PNG (photo redimensionnée et intégrée au coffre chiffré).
+- Nom, prénom, âge, anniversaire, adresse personnelle.
+- Séparation Privé / Professionnel, métier et adresse du lieu de travail.
+- Personnalité, émotions, centres d'intérêt, habitudes, objectifs et description.
+- Consultation, modification, duplication et suppression des fiches.
+- Espace de navigation Leaf modules.
+- LeafCalendar enrichi : calendriers thématiques, lieu, participants, récurrence indicative, notes/commentaires, mémos et listes.
+
+## Sécurité et fonctionnement
+- PIN 4 à 8 chiffres, dérivé PBKDF2-HMAC-SHA256 avec sel aléatoire.
+- Verrouillage après échecs, verrouillage manuel et à la mise en arrière-plan.
 - Coffre local AES-256-GCM, clé conservée dans Android Keystore.
-- Fiches identité : créer, consulter, modifier, supprimer ; description et objectif.
-- Relations entre personnes, catégories et espaces Privé / Professionnel.
-- Vue LeafGraph initiale des identités et connexions.
-- LeafCalendar local : événements CRUD et calendriers thématiques.
-- LeafNotes : notes et recherche simple.
-- Aucune permission Internet, IA, publicité ou télémétrie.
+- Aucune permission Internet, publicité ou télémétrie.
 
 ## Limites connues
-Cette version n'est pas encore LeafTracker Complete. L'éditeur graphique libre, la biométrie, les vues calendaires avancées, récurrences, rappels, export/import chiffré et autorisations fines seront développés ensuite. Les fonctions de TimeTree sont une inspiration fonctionnelle ; aucune connexion ou synchronisation TimeTree n'existe.
+Cette version est une étape de développement. Les vues calendrier mois/semaine/jour interactives, notifications programmées, récurrences automatiques, partage/synchronisation, éditeur graphique libre LeafGraph, biométrie et export/import chiffré restent à développer. Les participants sont des informations enregistrées dans l'événement, pas encore des invitations partagées. Les rappels et récurrences ne déclenchent pas encore de notifications automatiques.
 
-**Important :** le coffre dépend d'une clé Android Keystore. La désinstallation ou l'effacement des données peut rendre le coffre irrécupérable. Ne stocke pas encore de données irremplaçables avant l'export/import chiffré.
+**Important :** la photo est intégrée au coffre chiffré. Le coffre dépend d'une clé Android Keystore ; la désinstallation ou l'effacement des données peut le rendre irrécupérable. Ne stocke pas encore de données irremplaçables.
 
 ## Compiler
 Prérequis : JDK 17, Android SDK Platform 35, Gradle 8.9.
@@ -27,10 +32,8 @@ Prérequis : JDK 17, Android SDK Platform 35, Gradle 8.9.
 gradle --no-daemon assembleDebug
 ```
 
-APK : `app/build/outputs/apk/debug/app-debug.apk`.
-
-GitHub Actions compile automatiquement une APK debug à chaque push sur `main`. Voir l'onglet Actions du dépôt pour récupérer l'artefact.
+APK : `app/build/outputs/apk/debug/app-debug.apk`. GitHub Actions compile automatiquement l'APK debug à chaque push sur `main`.
 
 - Application ID : `com.leafvibe.leaftracker`
-- Version : `0.1.0` (versionCode 1)
-- Minimum Android : API 26
+- Version : `0.2.0` (versionCode 2)
+- Android minimum : API 26
