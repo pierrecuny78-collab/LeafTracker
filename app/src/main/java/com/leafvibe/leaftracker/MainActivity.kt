@@ -239,6 +239,46 @@ class MainActivity : Activity() {
         for(i in 0 until arr("identities").length()){val x=arr("identities").getJSONObject(i);if(shown(x))text(content,"● ${x.optString("name")}")}
         for(i in 0 until arr("relationships").length()){val r=arr("relationships").getJSONObject(i);if(space=="Tous"||r.optString("workspace")==space)text(content,"${findName(r.optString("from"))} — ${r.optString("type")} — ${findName(r.optString("to"))}")}
     }
+
+    private fun collectionUI(title:String,key:String,description:String,labels:Array<String>) {
+        text(content,title,22,true); text(content,description)
+        button(content,"＋ Ajouter"){collectionDialog(key,labels,null)}
+        val items=arr(key)
+        for(i in 0 until items.length()){val item=items.getJSONObject(i);if(!shown(item))continue
+            val summary=labels.mapIndexed{index,label->label+": "+item.optString("f"+index)}.joinToString("\n")
+            card(summary+"\n"+item.optString("workspace")){AlertDialog.Builder(this).setTitle(item.optString("f0")).setItems(arrayOf("Modifier","Archiver")){_,choice->if(choice==0)collectionDialog(key,labels,item)else remove(key,item.optString("id"));render()}.show()}
+        }
+        if(items.length()==0)text(content,"Aucun élément. Ajoute ton premier élément.")
+    }
+    private fun collectionDialog(key:String,labels:Array<String>,old:JSONObject?) {
+        val fields=labels.mapIndexed{index,label->input(label).apply{setText(old?.optString("f"+index,"")?:"")}}
+        val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"));setSelection(if(old?.optString("workspace",space)=="Professionnel")1 else 0)}
+        val form=column(*fields.toTypedArray(),ws)
+        AlertDialog.Builder(this).setTitle(if(old==null)"Nouvel élément" else "Modifier").setView(ScrollView(this).apply{addView(form)}).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
+            if(fields[0].text.isNullOrBlank())toast("Titre obligatoire")else{val item=old?:JSONObject().put("id",UUID.randomUUID().toString());fields.forEachIndexed{index,f->item.put("f"+index,f.text.toString())};item.put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé");if(old==null)arr(key).put(item);data.put(key,arr(key));save();render()}
+        }.show()
+    }
+    private fun dashboardUI() {
+        text(content,"LeafDashboard · Vue d'ensemble",22,true)
+        val metrics=listOf("Identités" to "identities","Relations" to "relationships","Événements" to "events","Notes" to "notes","Objectifs" to "goals","Souvenirs" to "moments","Lieux" to "places","Tâches" to "tasks")
+        metrics.forEach{pair->val label=pair.first;val key=pair.second;val count=(0 until arr(key).length()).count{shown(arr(key).getJSONObject(it))};card(label+"\n"+count+" élément(s)"){tab=when(key){"identities"->"Identités";"relationships"->"Social";"events"->"Calendrier";"notes"->"LeafNotes";"goals"->"LeafGoals";"moments"->"LeafMoments";"places"->"LeafPlaces";else->"LeafTasks"};render()}}
+        text(content,"Espace affiché : "+space)
+    }
+    private fun timelineUI() {
+        text(content,"LeafTimeline · Chronologie",22,true);text(content,"Événements, souvenirs et tâches classés par date.")
+        val entries=mutableListOf<Pair<String,String>>()
+        for(key in listOf("events","moments","tasks"))for(i in 0 until arr(key).length()){val x=arr(key).getJSONObject(i);if(shown(x)){val date=if(key=="events")x.optString("date") else x.optString("f1");val title=if(key=="events")x.optString("title") else x.optString("f0");if(date.isNotBlank())entries.add(date to (key+" · "+title))}}
+        entries.sortedBy{it.first}.forEach{entry->card(entry.first+"\n"+entry.second){}}
+        if(entries.isEmpty())text(content,"Ajoute des événements ou souvenirs datés pour commencer.")
+    }
+    private fun archiveUI() {
+        text(content,"LeafArchive · Corbeille",22,true);text(content,"Restaure les éléments archivés ou supprime-les définitivement.")
+        val items=arr("archive")
+        for(i in items.length()-1 downTo 0){val item=items.getJSONObject(i);card(item.optString("label")+"\n"+item.optString("sourceKey")){AlertDialog.Builder(this).setTitle(item.optString("label")).setItems(arrayOf("Restaurer","Supprimer définitivement")){_,choice->if(choice==0){val restored=JSONObject(item.toString());val key=restored.optString("sourceKey");restored.remove("sourceKey");restored.remove("label");restored.remove("archivedAt");arr(key).put(restored);data.put(key,arr(key));removePermanently("archive",item.optString("id"));save();render()}else{removePermanently("archive",item.optString("id"));render()}}.show()}}
+        if(items.length()==0)text(content,"La corbeille est vide.")
+    }
+    private fun removePermanently(key:String,id:String){val next=JSONArray();for(i in 0 until arr(key).length()){val x=arr(key).getJSONObject(i);if(x.optString("id")!=id)next.put(x)};data.put(key,next);save()}
+
     private fun calendarUI() {
         text(content,"LeafCalendar",22,true)
         text(content,"Calendriers personnels, familiaux et professionnels réunis dans une seule vue locale.")
@@ -307,7 +347,7 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this).setTitle("Changer le PIN").setView(column(old,next,confirm)).setNegativeButton("Annuler",null).setPositiveButton("Valider"){_,_->val p=next.text.toString();if(!pin.verify(old.text.toString().toCharArray()))toast("PIN actuel incorrect")else if(p.length !in 4..8||p.any{!it.isDigit()})toast("PIN de 4 à 8 chiffres")else if(p!=confirm.text.toString())toast("Confirmation incorrecte")else{pin.setPin(p.toCharArray());toast("PIN modifié")}}.show()
     }
     private fun findName(id:String):String {for(i in 0 until arr("identities").length()){val x=arr("identities").getJSONObject(i);if(x.optString("id")==id)return x.optString("name")};return "Identité supprimée"}
-    private fun remove(key:String,id:String){val next=JSONArray();for(i in 0 until arr(key).length()){val x=arr(key).getJSONObject(i);if(x.optString("id")!=id)next.put(x)};data.put(key,next);save()}
+    private fun remove(key:String,id:String){val next=JSONArray();for(i in 0 until arr(key).length()){val x=arr(key).getJSONObject(i);if(x.optString("id")==id){arr("archive").put(JSONObject(x.toString()).put("sourceKey",key).put("label",x.optString("title",x.optString("name",x.optString("f0",key)))).put("archivedAt",System.currentTimeMillis()))}else next.put(x)};data.put(key,next);save()}
     private fun save(){if(!vaultReady){toast("Coffre indisponible : écriture bloquée");return};try{store.write(data);updateWidgetCache()}catch(_:Exception){toast("Erreur de sauvegarde chiffrée")}}
     private fun updateWidgetCache(){
         val items=JSONArray()
