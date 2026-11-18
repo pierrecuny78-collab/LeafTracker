@@ -1,29 +1,32 @@
 # 🌿 LeafTracker
 
-**Version 0.2.0 — fiches d'identité enrichies et navigation Leaf**
+**Version 0.3.0 — LeafCalendar et widget Android**
 
-Application Android locale de gestion des personnes, relations, notes et événements.
+Application Android hors ligne pour gérer les identités, relations, notes et calendriers.
 
-## Nouveautés 0.2.0
-- Nouvelle icône de lancement LeafTracker.
-- Fiches d'identité avec photo JPG/PNG (photo redimensionnée et intégrée au coffre chiffré).
-- Nom, prénom, âge, anniversaire, adresse personnelle.
-- Séparation Privé / Professionnel, métier et adresse du lieu de travail.
-- Personnalité, émotions, centres d'intérêt, habitudes, objectifs et description.
-- Consultation, modification, duplication et suppression des fiches.
-- Espace de navigation Leaf modules.
-- LeafCalendar enrichi : calendriers thématiques, lieu, participants, récurrence indicative, notes/commentaires, mémos et listes.
+## Nouveautés 0.3.0
+- Navigation simplifiée : retrait des boutons PIN et sous-menus redondants de l'écran principal.
+- LeafCalendar regroupe les événements et propose des filtres Mois, Semaine, Jour et Liste.
+- Événements avec calendrier, lieu, participants, récurrence indicative et notes.
+- Widget Android d'accueil LeafCalendar.
+- Chaque événement peut être explicitement autorisé à apparaître sur le widget. Seuls ces événements sélectionnés sont publiés dans le cache du widget.
+- Le widget est volontairement vide tant qu'aucun événement n'a été autorisé.
 
-## Sécurité et fonctionnement
-- PIN 4 à 8 chiffres, dérivé PBKDF2-HMAC-SHA256 avec sel aléatoire.
-- Verrouillage après échecs, verrouillage manuel et à la mise en arrière-plan.
+## TimeTree et confidentialité
+LeafCalendar reprend localement des usages courants des calendriers partagés (calendriers distincts, événements détaillés, participants, mémos et vues temporelles). Il ne contient pas l'application propriétaire TimeTree, ne se connecte pas à ses comptes et ne synchronise pas ses données. L'application reste hors ligne.
+
+Le widget affiche uniquement les événements pour lesquels la case « Afficher sur le widget » a été cochée. Ces informations sont visibles sur l'écran d'accueil sans ouvrir LeafTracker : ne sélectionne pas d'informations confidentielles.
+
+## Sécurité
+- PIN 4 à 8 chiffres et verrouillage après échecs.
 - Coffre local AES-256-GCM, clé conservée dans Android Keystore.
 - Aucune permission Internet, publicité ou télémétrie.
+- Le cache du widget ne contient que les événements explicitement sélectionnés pour l'affichage externe.
 
 ## Limites connues
-Cette version est une étape de développement. Les vues calendrier mois/semaine/jour interactives, notifications programmées, récurrences automatiques, partage/synchronisation, éditeur graphique libre LeafGraph, biométrie et export/import chiffré restent à développer. Les participants sont des informations enregistrées dans l'événement, pas encore des invitations partagées. Les rappels et récurrences ne déclenchent pas encore de notifications automatiques.
+Les vues mois/semaine/jour sont des filtres d'événements, pas encore une grille calendrier complète. Les rappels et récurrences sont enregistrés mais ne déclenchent pas encore de notifications automatiques. Pas de synchronisation multi-appareils, invitations partagées, biométrie ou export/import chiffré. Le widget est un aperçu des événements choisis, pas un éditeur.
 
-**Important :** la photo est intégrée au coffre chiffré. Le coffre dépend d'une clé Android Keystore ; la désinstallation ou l'effacement des données peut le rendre irrécupérable. Ne stocke pas encore de données irremplaçables.
+**Important :** le coffre dépend d'une clé Android Keystore ; désinstaller l'application ou effacer ses données peut rendre les données irrécupérables. Ne stocke pas encore de données irremplaçables.
 
 ## Compiler
 Prérequis : JDK 17, Android SDK Platform 35, Gradle 8.9.
@@ -32,8 +35,8 @@ Prérequis : JDK 17, Android SDK Platform 35, Gradle 8.9.
 gradle --no-daemon assembleDebug
 ```
 
-APK : `app/build/outputs/apk/debug/app-debug.apk`. GitHub Actions compile automatiquement l'APK debug à chaque push sur `main`.
+APK : `app/build/outputs/apk/debug/app-debug.apk`.
 
 - Application ID : `com.leafvibe.leaftracker`
-- Version : `0.2.0` (versionCode 2)
+- Version : `0.3.0` (versionCode 3)
 - Android minimum : API 26
