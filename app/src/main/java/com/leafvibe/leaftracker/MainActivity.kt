@@ -155,7 +155,7 @@ class MainActivity : Activity() {
         text(content,"LeafVibe · Modules",22,true)
         text(content,"Les espaces de ton univers LeafTracker.")
         val modules=listOf("LeafIdentity" to "Profils détaillés","LeafSocial" to "Famille, amis, collègues","LeafGraph" to "Tableau blanc graphique","LeafCalendar" to "Calendriers et événements","LeafNotes" to "Carnets et notes","LeafGoals" to "Objectifs et progression","LeafMoments" to "Journal et souvenirs","LeafPlaces" to "Adresses et voyages","LeafTasks" to "Tâches et échéances","LeafArchive" to "Corbeille et restauration","LeafTimeline" to "Chronologie de vie","LeafDashboard" to "Tableau de bord")
-        modules.forEach{(name,desc)->card("$"+"name\n$"+"desc"){tab=name;render()}}
+        modules.forEach{(name,desc)->card("$name\n$desc"){tab=name;render()}}
     }
     private fun identitiesUI() {
         text(content,"LeafIdentity · Carnet des identités",21,true)
