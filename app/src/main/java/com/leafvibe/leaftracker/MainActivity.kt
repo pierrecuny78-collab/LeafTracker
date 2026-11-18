@@ -172,7 +172,7 @@ class MainActivity : Activity() {
     private fun column(vararg v:View)=LinearLayout(this).apply{orientation=1;setPadding(22,8,22,0);v.forEach{addView(it)}}
     private fun input(h:String)=EditText(this).apply{hint=h;textSize=15f}
     private fun pinField(h:String)=EditText(this).apply{hint=h;inputType=InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD;textSize=19f}
-    private fun text(parent:LinearLayout,s:String,size:Float=15f,bold:Boolean=false){parent.addView(TextView(this).apply{text=s;textSize=size;setTextColor(ink);if(bold)setTypeface(null,1);setPadding(0,8,0,8)})}
+    private fun text(parent:LinearLayout,s:String,size:Number=15f,bold:Boolean=false){parent.addView(TextView(this).apply{text=s;textSize=size.toFloat();setTextColor(ink);if(bold)setTypeface(null,1);setPadding(0,8,0,8)})}
     private fun button(parent:LinearLayout,s:String,action:()->Unit){parent.addView(Button(this).apply{text=s;isAllCaps=false;setTextColor(green);setOnClickListener{action()}})}
     private fun card(s:String,action:()->Unit){content.addView(TextView(this).apply{text=s;textSize=15f;setTextColor(ink);setPadding(13,13,13,13);setBackgroundColor(0xFFE5EFE8.toInt());setOnClickListener{action()}},LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=8})}
     private fun toast(s:String)=Toast.makeText(this,s,Toast.LENGTH_SHORT).show()
