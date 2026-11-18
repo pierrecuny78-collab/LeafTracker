@@ -285,7 +285,7 @@ class MainActivity : Activity() {
         val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"));setSelection(if(old?.optString("workspace",space)=="Professionnel")1 else 0)}
         val form=column(*fields.toTypedArray(),ws)
         AlertDialog.Builder(this).setTitle(if(old==null)"Nouvel élément" else "Modifier").setView(ScrollView(this).apply{addView(form)}).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
-            if(fields[0].text.isNullOrBlank())toast("Titre obligatoire")else{val item=old?:JSONObject().put("id",UUID.randomUUID().toString());fields.forEachIndexed{index,f->item.put("f"+index,f.text.toString())};item.put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé");if(old==null)arr(key).put(item);data.put(key,arr(key));save();render()}
+            if(fields[0].text.isNullOrBlank())toast("Titre obligatoire")else{val item=old?:JSONObject().put("id",UUID.randomUUID().toString());fields.forEachIndexed{index,f->item.put("f"+index,f.text.toString())};item.put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé");val items=arr(key);if(old==null)items.put(item);data.put(key,items);save();render()}
         }.show()
     }
     private fun dashboardUI() {
@@ -377,7 +377,7 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this).setTitle("Changer le PIN").setView(column(old,next,confirm)).setNegativeButton("Annuler",null).setPositiveButton("Valider"){_,_->val p=next.text.toString();if(!pin.verify(old.text.toString().toCharArray()))toast("PIN actuel incorrect")else if(p.length !in 4..8||p.any{!it.isDigit()})toast("PIN de 4 à 8 chiffres")else if(p!=confirm.text.toString())toast("Confirmation incorrecte")else{pin.setPin(p.toCharArray());toast("PIN modifié")}}.show()
     }
     private fun findName(id:String):String {for(i in 0 until arr("identities").length()){val x=arr("identities").getJSONObject(i);if(x.optString("id")==id)return x.optString("name")};return "Identité supprimée"}
-    private fun remove(key:String,id:String){val next=JSONArray();for(i in 0 until arr(key).length()){val x=arr(key).getJSONObject(i);if(x.optString("id")==id){arr("archive").put(JSONObject(x.toString()).put("sourceKey",key).put("label",x.optString("title",x.optString("name",x.optString("f0",key)))).put("archivedAt",System.currentTimeMillis()))}else next.put(x)};data.put(key,next);save()}
+    private fun remove(key:String,id:String){val next=JSONArray();val archive=arr("archive");for(i in 0 until arr(key).length()){val x=arr(key).getJSONObject(i);if(x.optString("id")==id){archive.put(JSONObject(x.toString()).put("sourceKey",key).put("label",x.optString("title",x.optString("name",x.optString("f0",key)))).put("archivedAt",System.currentTimeMillis()))}else next.put(x)};data.put(key,next);data.put("archive",archive);save()}
     private fun save(){if(!vaultReady){toast("Coffre indisponible : écriture bloquée");return};try{store.write(data);updateWidgetCache()}catch(_:Exception){toast("Erreur de sauvegarde chiffrée")}}
     private fun updateWidgetCache(){
         val items=JSONArray()
