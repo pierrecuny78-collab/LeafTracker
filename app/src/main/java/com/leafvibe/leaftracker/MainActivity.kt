@@ -31,6 +31,8 @@ class MainActivity : Activity() {
     private var vaultReady = false
     private var pendingPhoto = ""
     private var pendingPhotoView: ImageView? = null
+    private var calendarMode = "Mois"
+    private var monthOffset = 0
     private var swipeStartX = 0f
     private var swipeStartY = 0f
     private val green = 0xFF236B4B.toInt()
@@ -86,7 +88,7 @@ class MainActivity : Activity() {
     }
     private fun openVault() {
         unlocked = true
-        try { data = store.read(); vaultReady = true; render() }
+        try { data = store.read(); vaultReady = true; updateWidgetCache(); render() }
         catch (_: Exception) { vaultReady = false; val l = frame("Coffre indisponible"); text(l, "Déchiffrement impossible. Aucune donnée vide ne sera écrite par-dessus le coffre existant. Ne désinstalle pas l'application et n'efface pas ses données.") }
     }
     override fun onActivityResult(requestCode:Int,resultCode:Int,dataIntent:Intent?) {
@@ -117,16 +119,12 @@ class MainActivity : Activity() {
         }
         bar.addView(selector, LinearLayout.LayoutParams(0,-2,1f))
         bar.addView(Button(this).apply { text="Verrouiller"; isAllCaps=false; setOnClickListener { unlocked=false; unlockScreen() } })
-        bar.addView(Button(this).apply { text="PIN"; isAllCaps=false; setOnClickListener { changePin() } })
         l.addView(bar)
         val nav = LinearLayout(this).apply { orientation=0; gravity=Gravity.CENTER }
         nav.addView(Button(this).apply { text="‹ Leaf modules"; isAllCaps=false; setOnClickListener { tab="Modules"; render() } },LinearLayout.LayoutParams(0,-2,1f))
         nav.addView(Button(this).apply { text="Identités"; isAllCaps=false; setOnClickListener { tab="Identités"; render() } },LinearLayout.LayoutParams(0,-2,1f))
         nav.addView(Button(this).apply { text="LeafCalendar ›"; isAllCaps=false; setOnClickListener { tab="Calendrier"; render() } },LinearLayout.LayoutParams(0,-2,1f))
         l.addView(nav)
-        val subnav=LinearLayout(this).apply{orientation=0}
-        listOf("Social","Graph","Notes").forEach { t -> subnav.addView(Button(this).apply{text=t;textSize=11f;isAllCaps=false;setOnClickListener{tab=t;render()}},LinearLayout.LayoutParams(0,-2,1f)) }
-        l.addView(subnav)
         content = LinearLayout(this).apply { orientation=1; setPadding(0,12,0,0) }; l.addView(content)
         when(tab) { "Identités" -> identitiesUI(); "Social" -> socialUI(); "Graph" -> graphUI(); "Calendrier" -> calendarUI(); "Modules" -> modulesUI(); else -> notesUI() }
         text(l, "LEAFVIBE • Hors ligne • Coffre AES-GCM", 11)
@@ -217,7 +215,7 @@ class MainActivity : Activity() {
         val b=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(1)}
         val type=input("Type : parent, ami, collègue…"); val note=input("Description"); val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"))}
         AlertDialog.Builder(this).setTitle("Nouvelle relation").setView(column(type,note,a,b,ws)).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
-            if(a.selectedItemPosition==b.selectedItemPosition) toast("Choisis deux personnes différentes") else {arr("relationships").put(JSONObject().put("id",UUID.randomUUID().toString()).put("from",ids[a.selectedItemPosition]).put("to",ids[b.selectedItemPosition]).put("type",type.text.toString()).put("notes",note.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé"));data.put("relationships",arr("relationships"));save();render()}
+            if(a.selectedItemPosition==b.selectedItemPosition) toast("Choisis deux personnes différentes") else {arr("relationships").put(JSONObject().put("id",UUID.randomUUID().toString()).put("from",ids[a.selectedItemPosition]).put("to",ids[b.selectedItemPosition]).put("type",type.text.toString()).put("notes",note.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé").put("widgetVisible",widgetVisible.isChecked));data.put("relationships",arr("relationships"));save();render()}
         }.show()
     }
     private fun graphUI() {
@@ -251,7 +249,7 @@ class MainActivity : Activity() {
         val title=input("Titre de l'événement");val date=input("Date AAAA-MM-JJ");val time=input("Heure HH:MM");val cal=input("Calendrier : Famille, Amis, Travail");val location=input("Lieu / adresse");val participants=input("Participants");val recurrence=input("Récurrence : aucune, quotidienne, hebdomadaire, mensuelle, annuelle");val note=input("Description / notes / commentaires")
         if(old!=null){title.setText(old.optString("title"));date.setText(old.optString("date"));time.setText(old.optString("time"));cal.setText(old.optString("calendar"));location.setText(old.optString("location"));participants.setText(old.optString("participants"));recurrence.setText(old.optString("recurrence"));note.setText(old.optString("notes"))}
         val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"));setSelection(if(old?.optString("workspace",space)=="Professionnel")1 else 0)}
-        AlertDialog.Builder(this).setTitle(if(old==null)"Nouvel événement" else "Modifier l'événement").setView(ScrollView(this).apply{addView(column(title,date,time,cal,location,participants,recurrence,note,ws))}).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
+        AlertDialog.Builder(this).setTitle(if(old==null)"Nouvel événement" else "Modifier l'événement").setView(ScrollView(this).apply{addView(column(title,date,time,cal,location,participants,recurrence,note,ws,widgetVisible))}).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
             if(title.text.isNullOrBlank())toast("Titre obligatoire")else if(date.text.isNotBlank()&&!date.text.toString().matches(Regex("\\d{4}-\\d{2}-\\d{2}")))toast("Date au format AAAA-MM-JJ")else{
                 val e=old?:JSONObject().put("id",UUID.randomUUID().toString())
                 e.put("title",title.text.toString()).put("date",date.text.toString()).put("time",time.text.toString()).put("calendar",cal.text.toString()).put("location",location.text.toString()).put("participants",participants.text.toString()).put("recurrence",recurrence.text.toString()).put("notes",note.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé")
@@ -271,7 +269,15 @@ class MainActivity : Activity() {
     }
     private fun findName(id:String):String {for(i in 0 until arr("identities").length()){val x=arr("identities").getJSONObject(i);if(x.optString("id")==id)return x.optString("name")};return "Identité supprimée"}
     private fun remove(key:String,id:String){val next=JSONArray();for(i in 0 until arr(key).length()){val x=arr(key).getJSONObject(i);if(x.optString("id")!=id)next.put(x)};data.put(key,next);save()}
-    private fun save(){if(!vaultReady){toast("Coffre indisponible : écriture bloquée");return};try{store.write(data)}catch(_:Exception){toast("Erreur de sauvegarde chiffrée")}}
+    private fun save(){if(!vaultReady){toast("Coffre indisponible : écriture bloquée");return};try{store.write(data);updateWidgetCache()}catch(_:Exception){toast("Erreur de sauvegarde chiffrée")}}
+    private fun updateWidgetCache(){
+        val items=JSONArray()
+        val all=arr("events")
+        val selected=(0 until all.length()).map{all.getJSONObject(it)}.filter{it.optBoolean("widgetVisible",false)&&it.optString("date").isNotBlank()}.sortedBy{it.optString("date")+" "+it.optString("time")}
+        selected.take(5).forEach{e->items.put(JSONObject().put("title",e.optString("title")).put("date",e.optString("date")).put("time",e.optString("time")))}
+        getSharedPreferences("leaftracker_widget",MODE_PRIVATE).edit().putString("events",items.toString()).apply()
+        sendBroadcast(Intent(this,LeafTrackerWidgetProvider::class.java).setAction(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE))
+    }
     private fun column(vararg v:View)=LinearLayout(this).apply{orientation=1;setPadding(22,8,22,0);v.forEach{addView(it)}}
     private fun input(h:String)=EditText(this).apply{hint=h;textSize=15f}
     private fun pinField(h:String)=EditText(this).apply{hint=h;inputType=InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD;textSize=19f}
