@@ -376,6 +376,7 @@ class MainActivity : Activity() {
         content.addView(period)
         button(content,"＋ Nouvel événement"){eventDialog()}
         button(content,"＋ Mémo / liste"){calendarMemoDialog()}
+        button(content,"Anniversaires de l'entourage"){showUpcomingBirthdays()}
         val events=arr("events")
         val all=(0 until events.length()).map{events.getJSONObject(it)}.filter{shown(it)}
         val startWeek=today.with(DayOfWeek.MONDAY)
@@ -398,6 +399,17 @@ class MainActivity : Activity() {
         text(content,"Mémos et listes",17,true)
         for(i in 0 until arr("calendarMemos").length()){val memo=arr("calendarMemos").getJSONObject(i);if(shown(memo))card(memo.optString("title")+"\n"+memo.optString("body")){AlertDialog.Builder(this).setMessage(memo.optString("body")).setPositiveButton("Fermer",null).setNeutralButton("Supprimer"){_,_->remove("calendarMemos",memo.optString("id"));render()}.show()}}
         text(content,"Les événements sélectionnés peuvent aussi apparaître sur le widget d'accueil.",11)
+    }
+    private fun showUpcomingBirthdays(){
+        val today=LocalDate.now()
+        val rows=mutableListOf<Pair<LocalDate,String>>()
+        for(i in 0 until arr("identities").length()){
+            val person=arr("identities").getJSONObject(i);if(!shown(person))continue
+            val parts=person.optString("birthday").split("/")
+            if(parts.size==3)try{val date=LocalDate.of(today.year,parts[1].toInt(),parts[0].toInt());val next=if(date.isBefore(today))date.plusYears(1)else date;rows.add(next to (person.optString("firstName")+" "+person.optString("name")))}catch(_:Exception){}
+        }
+        val lines=rows.sortedBy{it.first}.map{it.first.toString()+" · "+it.second}
+        AlertDialog.Builder(this).setTitle("Prochains anniversaires").setMessage(if(lines.isEmpty())"Aucune date renseignée au format JJ/MM/AAAA." else lines.joinToString("\n")).setPositiveButton("Fermer",null).show()
     }
     private fun calendarMemoDialog(){
         val title=input("Titre du mémo / de la liste");val body=input("Contenu ou éléments de la liste")
