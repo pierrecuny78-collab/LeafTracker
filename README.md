@@ -1,42 +1,49 @@
 # 🌿 LeafTracker
 
-**Version 0.3.0 — LeafCalendar et widget Android**
+**Version 0.4.0 — Modules spécialisés et LeafGraph**
 
-Application Android hors ligne pour gérer les identités, relations, notes et calendriers.
+Application Android hors ligne, protégée par PIN et coffre local chiffré.
 
-## Nouveautés 0.3.0
-- Navigation simplifiée : retrait des boutons PIN et sous-menus redondants de l'écran principal.
-- LeafCalendar regroupe les événements et propose des filtres Mois, Semaine, Jour et Liste.
-- Événements avec calendrier, lieu, participants, récurrence indicative et notes.
-- Widget Android d'accueil LeafCalendar.
-- Chaque événement peut être explicitement autorisé à apparaître sur le widget. Seuls ces événements sélectionnés sont publiés dans le cache du widget.
-- Le widget est volontairement vide tant qu'aucun événement n'a été autorisé.
+## Nouveautés 0.4.0
+- LeafGoals : objectifs, motivation, échéance, progression et domaine.
+- LeafMoments : journal de vie, souvenirs, lieux, récits et personnes présentes.
+- LeafPlaces : carnet des lieux, adresses, catégories et contexte.
+- LeafTasks : tâches, descriptions, échéances, priorités et statuts.
+- LeafTimeline : chronologie regroupant événements, souvenirs et tâches datés.
+- LeafDashboard : compteurs et raccourcis vers les données de chaque module.
+- LeafArchive : corbeille avec restauration et suppression définitive.
+- LeafGraph : tableau blanc tactile avec cartes d'idées déplaçables et connexions nommées.
+- Les modules utilisent chacun leur propre collection de données et leurs propres écrans.
+- Les suppressions depuis les listes passent désormais par LeafArchive.
 
-## TimeTree et confidentialité
-LeafCalendar reprend localement des usages courants des calendriers partagés (calendriers distincts, événements détaillés, participants, mémos et vues temporelles). Il ne contient pas l'application propriétaire TimeTree, ne se connecte pas à ses comptes et ne synchronise pas ses données. L'application reste hors ligne.
+## Inspirations fonctionnelles
+- Obsidian Canvas : espace de travail visuel, cartes et liens nommés.
+- Milanote : organisation visuelle de notes et idées.
+- Notion : vues et données organisées par propriétés.
+- Gramps / FamilySearch : relations, chronologie et mémoire familiale.
+- Joplin : notes locales, carnets et recherche.
 
-Le widget affiche uniquement les événements pour lesquels la case « Afficher sur le widget » a été cochée. Ces informations sont visibles sur l'écran d'accueil sans ouvrir LeafTracker : ne sélectionne pas d'informations confidentielles.
-
-## Sécurité
-- PIN 4 à 8 chiffres et verrouillage après échecs.
-- Coffre local AES-256-GCM, clé conservée dans Android Keystore.
-- Aucune permission Internet, publicité ou télémétrie.
-- Le cache du widget ne contient que les événements explicitement sélectionnés pour l'affichage externe.
+## Confidentialité
+- PIN 4 à 8 chiffres.
+- Coffre local AES-GCM avec clé Android Keystore.
+- Fonctionnement hors ligne, sans compte ni IA.
+- Espaces Privé et Professionnel.
+- Le widget calendrier affiche uniquement les événements explicitement sélectionnés.
 
 ## Limites connues
-Les vues mois/semaine/jour sont des filtres d'événements, pas encore une grille calendrier complète. Les rappels et récurrences sont enregistrés mais ne déclenchent pas encore de notifications automatiques. Pas de synchronisation multi-appareils, invitations partagées, biométrie ou export/import chiffré. Le widget est un aperçu des événements choisis, pas un éditeur.
+LeafGraph 0.4.0 propose des cartes déplaçables et des connexions nommées, mais pas encore la suite graphique complète d'un outil de design : images sur la toile, formes libres, sélection multiple, zoom/panoramique avancé, modèles de diagrammes, export PNG et annuler/rétablir restent à développer. Les vues du calendrier, les notifications récurrentes et l'intégration directe TimeTree nécessitent également des versions ultérieures.
 
-**Important :** le coffre dépend d'une clé Android Keystore ; désinstaller l'application ou effacer ses données peut rendre les données irrécupérables. Ne stocke pas encore de données irremplaçables.
+**Important :** les données du coffre peuvent devenir irrécupérables si l'application est désinstallée ou si ses données sont effacées. Effectue des essais avec des données non critiques et conserve une sauvegarde avant migration.
 
-## Compiler
-Prérequis : JDK 17, Android SDK Platform 35, Gradle 8.9.
+## Compilation
+JDK 17, Android SDK Platform 35, Gradle 8.9.
 
 ```bash
 gradle --no-daemon assembleDebug
 ```
 
-APK : `app/build/outputs/apk/debug/app-debug.apk`.
+APK : `app/build/outputs/apk/debug/app-debug.apk`
 
 - Application ID : `com.leafvibe.leaftracker`
-- Version : `0.3.0` (versionCode 3)
+- Version : `0.4.0` (versionCode 4)
 - Android minimum : API 26
