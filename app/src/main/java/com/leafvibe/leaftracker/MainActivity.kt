@@ -128,7 +128,21 @@ class MainActivity : Activity() {
         nav.addView(Button(this).apply { text="LeafCalendar ›"; isAllCaps=false; setOnClickListener { tab="Calendrier"; render() } },LinearLayout.LayoutParams(0,-2,1f))
         l.addView(nav)
         content = LinearLayout(this).apply { orientation=1; setPadding(0,12,0,0) }; l.addView(content)
-        when(tab) { "Identités" -> identitiesUI(); "Social" -> socialUI(); "Graph" -> graphUI(); "Calendrier" -> calendarUI(); "Modules" -> modulesUI(); else -> notesUI() }
+        when(tab) {
+            "Identités","LeafIdentity" -> identitiesUI()
+            "Social","LeafSocial" -> socialUI()
+            "Graph","LeafGraph" -> graphUI()
+            "Calendrier","LeafCalendar" -> calendarUI()
+            "LeafGoals" -> collectionUI("LeafGoals","goals","Objectifs et ambitions",arrayOf("Objectif","Pourquoi ?","Échéance","Progression (0-100)","Domaine"))
+            "LeafMoments" -> collectionUI("LeafMoments","moments","Journal et souvenirs",arrayOf("Titre","Date","Lieu","Récit","Personnes présentes"))
+            "LeafPlaces" -> collectionUI("LeafPlaces","places","Carnet des lieux",arrayOf("Nom","Adresse","Catégorie","Contexte","Notes"))
+            "LeafTasks" -> collectionUI("LeafTasks","tasks","Tâches et échéances",arrayOf("Tâche","Description","Échéance","Priorité","Statut"))
+            "LeafArchive" -> archiveUI()
+            "LeafTimeline" -> timelineUI()
+            "LeafDashboard" -> dashboardUI()
+            "Modules" -> modulesUI()
+            else -> notesUI()
+        }
         text(l, "LEAFVIBE • Hors ligne • Coffre AES-GCM", 11)
     }
     private fun arr(k:String)=data.optJSONArray(k) ?: JSONArray()
@@ -136,8 +150,8 @@ class MainActivity : Activity() {
     private fun modulesUI() {
         text(content,"LeafVibe · Modules",22,true)
         text(content,"Les espaces de ton univers LeafTracker.")
-        val modules=listOf("LeafIdentity" to "Profils détaillés et fiches personnalisées","LeafSocial" to "Famille, amis, collègues et relations","LeafGraph" to "Cartographie des personnes et des liens","LeafCalendar" to "Calendriers personnels et professionnels","LeafNotes" to "Notes, mémos et recherche","LeafGoals" to "Objectifs, projets et ambitions","LeafMoments" to "Souvenirs et dates importantes","LeafPlaces" to "Adresses et lieux utiles","LeafTasks" to "Tâches et listes de suivi","LeafArchive" to "Éléments archivés")
-        modules.forEach{(name,desc)->card("$name\n$desc"){tab=when(name){"LeafIdentity"->"Identités";"LeafSocial"->"Social";"LeafGraph"->"Graph";"LeafCalendar"->"Calendrier";else->"Notes"};render()}}
+        val modules=listOf("LeafIdentity" to "Profils détaillés","LeafSocial" to "Famille, amis, collègues","LeafGraph" to "Tableau blanc graphique","LeafCalendar" to "Calendriers et événements","LeafNotes" to "Carnets et notes","LeafGoals" to "Objectifs et progression","LeafMoments" to "Journal et souvenirs","LeafPlaces" to "Adresses et voyages","LeafTasks" to "Tâches et échéances","LeafArchive" to "Corbeille et restauration","LeafTimeline" to "Chronologie de vie","LeafDashboard" to "Tableau de bord")
+        modules.forEach{(name,desc)->card("$"+"name\n$"+"desc"){tab=name;render()}}
     }
     private fun identitiesUI() {
         text(content,"LeafIdentity · Carnet des identités",21,true)
