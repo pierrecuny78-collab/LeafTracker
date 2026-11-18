@@ -17,6 +17,8 @@ import com.leafvibe.leaftracker.security.PinManager
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
+import java.time.LocalDate
+import java.time.DayOfWeek
 
 class MainActivity : Activity() {
     private lateinit var pin: PinManager
@@ -224,22 +226,44 @@ class MainActivity : Activity() {
         for(i in 0 until arr("relationships").length()){val r=arr("relationships").getJSONObject(i);if(space=="Tous"||r.optString("workspace")==space)text(content,"${findName(r.optString("from"))} — ${r.optString("type")} — ${findName(r.optString("to"))}")}
     }
     private fun calendarUI() {
-        text(content,"LeafCalendar · Agenda",21,true)
-        text(content,"Un tableau local multi-calendriers : famille, amis, personnel et travail.")
+        text(content,"LeafCalendar",22,true)
+        text(content,"Calendriers personnels, familiaux et professionnels réunis dans une seule vue locale.")
         val modes=LinearLayout(this).apply{orientation=0}
-        listOf("Mois","Semaine","Jour").forEach{label->modes.addView(Button(this).apply{text=label;isAllCaps=false;setOnClickListener{toast("Vue $label : affichage avancé en cours de développement")}},LinearLayout.LayoutParams(0,-2,1f))}
+        listOf("Mois","Semaine","Jour","Liste").forEach{mode->
+            modes.addView(Button(this).apply{text=mode;textSize=11f;isAllCaps=false;setOnClickListener{calendarMode=mode;render()}},LinearLayout.LayoutParams(0,-2,1f))
+        }
         content.addView(modes)
-        button(content,"＋ Ajouter un événement"){eventDialog()}
-        button(content,"＋ Ajouter un mémo / une liste"){calendarMemoDialog()}
+        val today=LocalDate.now()
+        val month=today.withDayOfMonth(1).plusMonths(monthOffset.toLong())
+        val period=LinearLayout(this).apply{orientation=0;gravity=Gravity.CENTER_VERTICAL}
+        period.addView(Button(this).apply{text="‹";isAllCaps=false;setOnClickListener{monthOffset--;render()}})
+        period.addView(TextView(this).apply{text=month.month.name+" "+month.year;textSize=16f;setTextColor(ink);gravity=Gravity.CENTER},LinearLayout.LayoutParams(0,-2,1f))
+        period.addView(Button(this).apply{text="›";isAllCaps=false;setOnClickListener{monthOffset++;render()}})
+        content.addView(period)
+        button(content,"＋ Nouvel événement"){eventDialog()}
+        button(content,"＋ Mémo / liste"){calendarMemoDialog()}
         val events=arr("events")
-        val sorted=(0 until events.length()).map{events.getJSONObject(it)}.filter{shown(it)}.sortedBy{it.optString("date")+" "+it.optString("time")}
-        if(sorted.isEmpty())text(content,"Aucun événement enregistré. Crée ton premier rendez-vous.")
-        sorted.forEach{e->
-            val detail="📅 "+e.optString("title")+"\n"+e.optString("date")+" "+e.optString("time")+" · "+e.optString("calendar")+"\n"+e.optString("location")+"\n"+e.optString("notes")+"\nParticipants : "+e.optString("participants")+" · "+e.optString("recurrence")
+        val all=(0 until events.length()).map{events.getJSONObject(it)}.filter{shown(it)}
+        val startWeek=today.with(DayOfWeek.MONDAY)
+        val endWeek=startWeek.plusDays(6)
+        val visible=all.filter{e->
+            val date=try{LocalDate.parse(e.optString("date"))}catch(_:Exception){null}
+            when(calendarMode){
+                "Jour"->date==today
+                "Semaine"->date!=null&&!date.isBefore(startWeek)&&!date.isAfter(endWeek)
+                "Mois"->date!=null&&date.year==month.year&&date.month==month.month
+                else->true
+            }
+        }.sortedBy{it.optString("date")+" "+it.optString("time")}
+        text(content,when(calendarMode){"Jour"->"Aujourd'hui";"Semaine"->"Cette semaine";"Mois"->"Événements du mois";else->"Tous les événements"},15,true)
+        if(visible.isEmpty())text(content,"Aucun événement dans cette période.")
+        visible.forEach{e->
+            val detail="📅 "+e.optString("title")+"\n"+e.optString("date")+" · "+e.optString("time")+"\n"+e.optString("calendar")+" · "+e.optString("workspace")+"\n"+e.optString("location")+"\n"+e.optString("notes")+"\nParticipants : "+e.optString("participants")+" · "+e.optString("recurrence")
             card(detail){AlertDialog.Builder(this).setTitle(e.optString("title")).setItems(arrayOf("Consulter / modifier","Supprimer")){_,n->if(n==0)eventDialog(e)else AlertDialog.Builder(this).setMessage("Supprimer cet événement ?").setNegativeButton("Annuler",null).setPositiveButton("Supprimer"){_,_->remove("events",e.optString("id"));render()}.show()}.show()}
         }
         text(content,"Mémos et listes",17,true)
         for(i in 0 until arr("calendarMemos").length()){val memo=arr("calendarMemos").getJSONObject(i);if(shown(memo))card(memo.optString("title")+"\n"+memo.optString("body")){AlertDialog.Builder(this).setMessage(memo.optString("body")).setPositiveButton("Fermer",null).setNeutralButton("Supprimer"){_,_->remove("calendarMemos",memo.optString("id"));render()}.show()}}
+        text(content,"Les événements sélectionnés peuvent aussi apparaître sur le widget d'accueil.",11)
     }
     private fun calendarMemoDialog(){
         val title=input("Titre du mémo / de la liste");val body=input("Contenu ou éléments de la liste")
