@@ -217,7 +217,7 @@ class MainActivity : Activity() {
         val b=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(1)}
         val type=input("Type : parent, ami, collègue…"); val note=input("Description"); val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"))}
         AlertDialog.Builder(this).setTitle("Nouvelle relation").setView(column(type,note,a,b,ws)).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
-            if(a.selectedItemPosition==b.selectedItemPosition) toast("Choisis deux personnes différentes") else {arr("relationships").put(JSONObject().put("id",UUID.randomUUID().toString()).put("from",ids[a.selectedItemPosition]).put("to",ids[b.selectedItemPosition]).put("type",type.text.toString()).put("notes",note.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé").put("widgetVisible",widgetVisible.isChecked));data.put("relationships",arr("relationships"));save();render()}
+            if(a.selectedItemPosition==b.selectedItemPosition) toast("Choisis deux personnes différentes") else {arr("relationships").put(JSONObject().put("id",UUID.randomUUID().toString()).put("from",ids[a.selectedItemPosition]).put("to",ids[b.selectedItemPosition]).put("type",type.text.toString()).put("notes",note.text.toString()) .put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé"));data.put("relationships",arr("relationships"));save();render()}
         }.show()
     }
     private fun graphUI() {
@@ -277,7 +277,7 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this).setTitle(if(old==null)"Nouvel événement" else "Modifier l'événement").setView(ScrollView(this).apply{addView(column(title,date,time,cal,location,participants,recurrence,note,ws,widgetVisible))}).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
             if(title.text.isNullOrBlank())toast("Titre obligatoire")else if(date.text.isNotBlank()&&!date.text.toString().matches(Regex("\\d{4}-\\d{2}-\\d{2}")))toast("Date au format AAAA-MM-JJ")else{
                 val e=old?:JSONObject().put("id",UUID.randomUUID().toString())
-                e.put("title",title.text.toString()).put("date",date.text.toString()).put("time",time.text.toString()).put("calendar",cal.text.toString()).put("location",location.text.toString()).put("participants",participants.text.toString()).put("recurrence",recurrence.text.toString()).put("notes",note.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé")
+                e.put("title",title.text.toString()).put("date",date.text.toString()).put("time",time.text.toString()).put("calendar",cal.text.toString()).put("location",location.text.toString()).put("participants",participants.text.toString()).put("recurrence",recurrence.text.toString()).put("notes",note.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé").put("widgetVisible",widgetVisible.isChecked)
                 if(old==null)arr("events").put(e);data.put("events",arr("events"));save();render()
             }
         }.show()
