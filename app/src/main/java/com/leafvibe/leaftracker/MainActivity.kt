@@ -321,14 +321,24 @@ class MainActivity : Activity() {
     }
     private fun findGraphNode(id:String):JSONObject?{val ns=arr("graphNodes");for(i in 0 until ns.length()){val n=ns.getJSONObject(i);if(n.optString("id")==id)return n};return null}
     private fun collectionUI(title:String,key:String,description:String,labels:Array<String>) {
-        text(content,title,22,true); text(content,description)
+        text(content,title,22,true);text(content,description)
         button(content,"＋ Ajouter"){collectionDialog(key,labels,null)}
         val items=arr(key)
-        for(i in 0 until items.length()){val item=items.getJSONObject(i);if(!shown(item))continue
+        val filtered=(0 until items.length()).map{items.getJSONObject(it)}.filter{shown(it)}
+        val ordered=if(key=="LeafTasks")filtered.sortedBy{it.optString("f2")} else filtered
+        ordered.forEach{item->
             val summary=labels.mapIndexed{index,label->label+": "+item.optString("f"+index)}.joinToString("\n")
-            card(summary+"\n"+item.optString("workspace")){AlertDialog.Builder(this).setTitle(item.optString("f0")).setItems(arrayOf("Modifier","Archiver")){_,choice->if(choice==0)collectionDialog(key,labels,item)else remove(key,item.optString("id"));render()}.show()}
+            val state=when(key){"LeafTasks"->if(item.optBoolean("done",false))"✓ Terminé" else "○ À faire";"LeafGoals"->"Progression : "+item.optString("f3","0")+"%";else->item.optString("workspace")}
+            card(summary+"\n"+state){
+                val actions=if(key=="LeafTasks")arrayOf("Modifier","Marquer "+if(item.optBoolean("done",false))"à faire" else "terminé","Archiver") else arrayOf("Modifier","Archiver")
+                AlertDialog.Builder(this).setTitle(item.optString("f0")).setItems(actions){_,choice->
+                    if(choice==0)collectionDialog(key,labels,item)
+                    else if(key=="LeafTasks"&&choice==1){item.put("done",!item.optBoolean("done",false));data.put(key,items);save();render()}
+                    else{remove(key,item.optString("id"));render()}
+                }.show()
+            }
         }
-        if(items.length()==0)text(content,"Aucun élément. Ajoute ton premier élément.")
+        if(filtered.isEmpty())text(content,"Aucun élément. Ajoute ton premier élément.")
     }
     private fun collectionDialog(key:String,labels:Array<String>,old:JSONObject?) {
         val fields=labels.mapIndexed{index,label->input(label).apply{setText(old?.optString("f"+index,"")?:"")}}
