@@ -9,6 +9,7 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.*
 import com.leafvibe.leaftracker.data.SecureStore
@@ -30,6 +31,8 @@ class MainActivity : Activity() {
     private var vaultReady = false
     private var pendingPhoto = ""
     private var pendingPhotoView: ImageView? = null
+    private var swipeStartX = 0f
+    private var swipeStartY = 0f
     private val green = 0xFF236B4B.toInt()
     private val ink = 0xFF183329.toInt()
 
@@ -37,6 +40,18 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         pin = PinManager(this); store = SecureStore(this)
         if (pin.isConfigured()) unlockScreen() else setupPin()
+    }
+    override fun dispatchTouchEvent(event:MotionEvent):Boolean {
+        if(event.action==MotionEvent.ACTION_DOWN){swipeStartX=event.x;swipeStartY=event.y}
+        val result=super.dispatchTouchEvent(event)
+        if(event.action==MotionEvent.ACTION_UP && unlocked) {
+            val dx=event.x-swipeStartX; val dy=event.y-swipeStartY
+            if(kotlin.math.abs(dx)>125f && kotlin.math.abs(dx)>kotlin.math.abs(dy)*1.35f) {
+                val next=if(dx<0) "Modules" else "Calendrier"
+                if(tab!=next){tab=next;render()}
+            }
+        }
+        return result
     }
     override fun onStop() { super.onStop(); if (unlocked) { unlocked = false; relock = true } }
     override fun onResume() { super.onResume(); if (relock && pin.isConfigured()) { relock = false; unlockScreen() } }
