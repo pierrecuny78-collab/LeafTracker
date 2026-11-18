@@ -215,7 +215,7 @@ class MainActivity : Activity() {
         val b=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(1)}
         val type=input("Type : parent, ami, collègue…"); val note=input("Description"); val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"))}
         AlertDialog.Builder(this).setTitle("Nouvelle relation").setView(column(type,note,a,b,ws)).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
-            if(a.selectedItemPosition==b.selectedItemPosition) toast("Choisis deux personnes différentes") else {arr("relationships").put(JSONObject().put("id",UUID.randomUUID().toString()).put("from",ids[a.selectedItemPosition]).put("to",ids[b.selectedItemPosition]).put("type",type.text.toString()).put("notes",note.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé").put("widgetVisible",widgetVisible.isChecked));data.put("relationships",arr("relationships"));save();render()}
+            if(a.selectedItemPosition==b.selectedItemPosition) toast("Choisis deux personnes différentes") else {arr("relationships").put(JSONObject().put("id",UUID.randomUUID().toString()).put("from",ids[a.selectedItemPosition]).put("to",ids[b.selectedItemPosition]).put("type",type.text.toString()).put("notes",note.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé").put("widgetVisible",widgetVisible.isChecked).put("widgetVisible",widgetVisible.isChecked));data.put("relationships",arr("relationships"));save();render()}
         }.show()
     }
     private fun graphUI() {
@@ -247,6 +247,7 @@ class MainActivity : Activity() {
     }
     private fun eventDialog(old:JSONObject?=null) {
         val title=input("Titre de l'événement");val date=input("Date AAAA-MM-JJ");val time=input("Heure HH:MM");val cal=input("Calendrier : Famille, Amis, Travail");val location=input("Lieu / adresse");val participants=input("Participants");val recurrence=input("Récurrence : aucune, quotidienne, hebdomadaire, mensuelle, annuelle");val note=input("Description / notes / commentaires")
+        val widgetVisible=CheckBox(this).apply{text="Afficher sur le widget (visible hors de l’application)";isChecked=old?.optBoolean("widgetVisible",false)?:false}
         if(old!=null){title.setText(old.optString("title"));date.setText(old.optString("date"));time.setText(old.optString("time"));cal.setText(old.optString("calendar"));location.setText(old.optString("location"));participants.setText(old.optString("participants"));recurrence.setText(old.optString("recurrence"));note.setText(old.optString("notes"))}
         val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"));setSelection(if(old?.optString("workspace",space)=="Professionnel")1 else 0)}
         AlertDialog.Builder(this).setTitle(if(old==null)"Nouvel événement" else "Modifier l'événement").setView(ScrollView(this).apply{addView(column(title,date,time,cal,location,participants,recurrence,note,ws,widgetVisible))}).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
