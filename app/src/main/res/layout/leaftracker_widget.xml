@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:background="#F1F6F2">
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🌿 LeafCalendar"
+        android:textColor="#183329"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:paddingBottom="8dp"/>
+    <TextView
+        android:id="@+id/widget_events"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Chargement du calendrier…"
+        android:textColor="#244B39"
+        android:textSize="13sp"
+        android:maxLines="8"/>
+</LinearLayout>
