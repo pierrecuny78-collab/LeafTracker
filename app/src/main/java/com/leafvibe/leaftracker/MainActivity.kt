@@ -104,15 +104,26 @@ class MainActivity : Activity() {
         bar.addView(Button(this).apply { text="Verrouiller"; isAllCaps=false; setOnClickListener { unlocked=false; unlockScreen() } })
         bar.addView(Button(this).apply { text="PIN"; isAllCaps=false; setOnClickListener { changePin() } })
         l.addView(bar)
-        val nav = LinearLayout(this).apply { orientation=0 }
-        listOf("Identités","Social","Graph","Calendrier","Notes").forEach { t -> nav.addView(Button(this).apply { text=t; textSize=10f; isAllCaps=false; setOnClickListener { tab=t; render() } }, LinearLayout.LayoutParams(0,-2,1f)) }
+        val nav = LinearLayout(this).apply { orientation=0; gravity=Gravity.CENTER }
+        nav.addView(Button(this).apply { text="‹ Leaf modules"; isAllCaps=false; setOnClickListener { tab="Modules"; render() } },LinearLayout.LayoutParams(0,-2,1f))
+        nav.addView(Button(this).apply { text="Identités"; isAllCaps=false; setOnClickListener { tab="Identités"; render() } },LinearLayout.LayoutParams(0,-2,1f))
+        nav.addView(Button(this).apply { text="LeafCalendar ›"; isAllCaps=false; setOnClickListener { tab="Calendrier"; render() } },LinearLayout.LayoutParams(0,-2,1f))
         l.addView(nav)
+        val subnav=LinearLayout(this).apply{orientation=0}
+        listOf("Social","Graph","Notes").forEach { t -> subnav.addView(Button(this).apply{text=t;textSize=11f;isAllCaps=false;setOnClickListener{tab=t;render()}},LinearLayout.LayoutParams(0,-2,1f)) }
+        l.addView(subnav)
         content = LinearLayout(this).apply { orientation=1; setPadding(0,12,0,0) }; l.addView(content)
-        when(tab) { "Identités" -> identitiesUI(); "Social" -> socialUI(); "Graph" -> graphUI(); "Calendrier" -> calendarUI(); else -> notesUI() }
+        when(tab) { "Identités" -> identitiesUI(); "Social" -> socialUI(); "Graph" -> graphUI(); "Calendrier" -> calendarUI(); "Modules" -> modulesUI(); else -> notesUI() }
         text(l, "LEAFVIBE • Hors ligne • Coffre AES-GCM", 11)
     }
     private fun arr(k:String)=data.optJSONArray(k) ?: JSONArray()
     private fun shown(o:JSONObject)=space=="Tous" || o.optString("workspace","Privé")==space
+    private fun modulesUI() {
+        text(content,"LeafVibe · Modules",22,true)
+        text(content,"Les espaces de ton univers LeafTracker.")
+        val modules=listOf("LeafIdentity" to "Profils détaillés et fiches personnalisées","LeafSocial" to "Famille, amis, collègues et relations","LeafGraph" to "Cartographie des personnes et des liens","LeafCalendar" to "Calendriers personnels et professionnels","LeafNotes" to "Notes, mémos et recherche","LeafGoals" to "Objectifs, projets et ambitions","LeafMoments" to "Souvenirs et dates importantes","LeafPlaces" to "Adresses et lieux utiles","LeafTasks" to "Tâches et listes de suivi","LeafArchive" to "Éléments archivés")
+        modules.forEach{(name,desc)->card("$name\n$desc"){tab=when(name){"LeafIdentity"->"Identités";"LeafSocial"->"Social";"LeafGraph"->"Graph";"LeafCalendar"->"Calendrier";else->"Notes"};render()}}
+    }
     private fun identitiesUI() {
         text(content,"LeafIdentity · Carnet des identités",21,true)
         text(content,"Des fiches complètes pour la famille, les amis, l'entourage et les collègues.")
