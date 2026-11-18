@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:allowBackup="false" android:label="LeafTracker" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:supportsRtl="true" android:usesCleartextTraffic="false">
+    <application android:allowBackup="false" android:label="LeafTracker" android:icon="@drawable/leaftracker_icon" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:supportsRtl="true" android:usesCleartextTraffic="false">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
