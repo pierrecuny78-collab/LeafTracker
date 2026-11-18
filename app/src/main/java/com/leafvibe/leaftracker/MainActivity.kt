@@ -384,10 +384,53 @@ class MainActivity : Activity() {
         }.show()
     }
     private fun notesUI() {
-        text(content,"LeafNotes · Recherche",21,true);val q=input("Rechercher identités et notes")
-        button(content,"Rechercher"){val term=q.text.toString().lowercase();val hits=mutableListOf<String>();for(i in 0 until arr("identities").length()){val x=arr("identities").getJSONObject(i);if(shown(x)&&(x.optString("name")+x.optString("description")).lowercase().contains(term))hits.add("Identité : ${x.optString("name")}")};for(i in 0 until arr("notes").length()){val x=arr("notes").getJSONObject(i);if((space=="Tous"||x.optString("workspace")==space)&&(x.optString("title")+x.optString("body")).lowercase().contains(term))hits.add("Note : ${x.optString("title")}")};AlertDialog.Builder(this).setTitle("Résultats : ${hits.size}").setMessage(hits.joinToString("\n")).setPositiveButton("Fermer",null).show()}
-        button(content,"+ Nouvelle note"){val t=input("Titre");val b=input("Contenu");AlertDialog.Builder(this).setTitle("Nouvelle note").setView(column(t,b)).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->if(t.text.isNotBlank()){arr("notes").put(JSONObject().put("id",UUID.randomUUID().toString()).put("title",t.text.toString()).put("body",b.text.toString()).put("workspace",if(space=="Professionnel")"Professionnel" else "Privé"));data.put("notes",arr("notes"));save();render()}}.show()}
-        for(i in 0 until arr("notes").length()){val n=arr("notes").getJSONObject(i);if(space=="Tous"||n.optString("workspace")==space)card("${n.optString("title")}\n${n.optString("body")}"){AlertDialog.Builder(this).setMessage(n.optString("body")).setPositiveButton("Fermer",null).setNeutralButton("Supprimer"){_,_->remove("notes",n.optString("id"));render()}.show()}}
+        text(content,"LeafNotes · Carnets et recherche",21,true)
+        text(content,"Notes classées par carnet, étiquettes et favoris. Tout reste dans le coffre local.")
+        val query=input("Rechercher dans les titres, textes, tags et carnets")
+        button(content,"Rechercher"){renderNotesResults(query.text.toString())}
+        button(content,"＋ Nouvelle note"){noteDialog()}
+        val notes=arr("notes")
+        val filtered=(0 until notes.length()).map{notes.getJSONObject(it)}.filter{(space=="Tous"||it.optString("workspace","Privé")==space)}
+            .sortedWith(compareByDescending<JSONObject>{it.optBoolean("favorite",false)}.thenByDescending{it.optLong("updatedAt",0)})
+        val notebooks=filtered.map{it.optString("notebook","Général")}.distinct()
+        notebooks.forEach{book->
+            text(content,book,16,true)
+            filtered.filter{it.optString("notebook","Général")==book}.forEach{n->
+                card((if(n.optBoolean("favorite"))"★ " else "")+n.optString("title")+"\n"+n.optString("tags")+"\n"+n.optString("body").take(180)){
+                    AlertDialog.Builder(this).setTitle(n.optString("title")).setItems(arrayOf("Ouvrir / modifier","Ajouter ou retirer des favoris","Supprimer")){_,choice->
+                        when(choice){0->noteDialog(n);1->{n.put("favorite",!n.optBoolean("favorite"));n.put("updatedAt",System.currentTimeMillis());data.put("notes",notes);save();render()};2->AlertDialog.Builder(this).setMessage("Placer cette note dans la corbeille ?").setNegativeButton("Annuler",null).setPositiveButton("Archiver"){_,_->remove("notes",n.optString("id"));render()}.show()}
+                    }.show()
+                }
+            }
+        }
+        if(filtered.isEmpty())text(content,"Aucune note dans cet espace.")
+    }
+    private fun noteDialog(old:JSONObject?=null){
+        val title=input("Titre de la note").apply{setText(old?.optString("title","")?:"")}
+        val book=input("Carnet : Général, Famille, Travail, Idées…").apply{setText(old?.optString("notebook","Général")?:"Général")}
+        val tags=input("Étiquettes séparées par des virgules").apply{setText(old?.optString("tags","")?:"")}
+        val body=EditText(this).apply{hint="Écris ta note ici…";minLines=6;gravity=Gravity.TOP;setText(old?.optString("body","")?:"")}
+        val favorite=CheckBox(this).apply{text="Ajouter aux favoris";isChecked=old?.optBoolean("favorite",false)?:false}
+        val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"));setSelection(if(old?.optString("workspace",space)=="Professionnel")1 else 0)}
+        AlertDialog.Builder(this).setTitle(if(old==null)"Nouvelle note" else "Modifier la note").setView(ScrollView(this).apply{addView(column(title,book,tags,body,favorite,ws))}).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
+            if(title.text.isNullOrBlank())toast("Le titre est obligatoire")else{
+                val n=old?:JSONObject().put("id",UUID.randomUUID().toString())
+                n.put("title",title.text.toString()).put("notebook",book.text.toString().ifBlank{"Général"}).put("tags",tags.text.toString()).put("body",body.text.toString()).put("favorite",favorite.isChecked).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé").put("updatedAt",System.currentTimeMillis())
+                val all=arr("notes");if(old==null)all.put(n);data.put("notes",all);save();render()
+            }
+        }.show()
+    }
+    private fun renderNotesResults(termRaw:String){
+        val term=termRaw.trim().lowercase()
+        val hits=mutableListOf<String>()
+        for(key in listOf("identities","notes","moments","goals","tasks","places")){
+            for(i in 0 until arr(key).length()){
+                val item=arr(key).getJSONObject(i);if(!shown(item))continue
+                val hay=item.toString().lowercase()
+                if(term.isNotBlank()&&hay.contains(term))hits.add(key+" : "+item.optString("title",item.optString("name",item.optString("f0","Élément"))))
+            }
+        }
+        AlertDialog.Builder(this).setTitle("Recherche globale · "+hits.size+" résultat(s)").setMessage(if(hits.isEmpty())"Aucun résultat. Essaie un autre mot-clé." else hits.joinToString("\n")).setPositiveButton("Fermer",null).show()
     }
     private fun changePin() {
         val old=pinField("PIN actuel");val next=pinField("Nouveau PIN");val confirm=pinField("Confirmer")
