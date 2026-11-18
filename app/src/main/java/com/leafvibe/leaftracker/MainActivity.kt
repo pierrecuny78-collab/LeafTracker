@@ -243,8 +243,8 @@ class MainActivity : Activity() {
         if(arr("identities").length()<2){toast("Crée au moins deux identités");return}
         val ids=mutableListOf<String>();val names=mutableListOf<String>()
         for(i in 0 until arr("identities").length()){val x=arr("identities").getJSONObject(i);ids.add(x.optString("id"));names.add(x.optString("firstName")+" "+x.optString("name"))}
-        val a=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(ids.indexOf(old?.optString("from")).coerceAtLeast(0))}
-        val b=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(ids.indexOf(old?.optString("to")).takeIf{it>=0}?:1)}
+        val a=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(ids.indexOf(old?.optString("from") ?: "").coerceAtLeast(0))}
+        val b=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(ids.indexOf(old?.optString("to") ?: "").takeIf{it>=0}?:1)}
         val type=input("Type : parent, enfant, ami, collègue, partenaire…").apply{setText(old?.optString("type","")?:"")}
         val note=input("Description du lien").apply{setText(old?.optString("notes","")?:"")}
         val last=input("Dernier contact (AAAA-MM-JJ)").apply{setText(old?.optString("lastContact","")?:"")}
