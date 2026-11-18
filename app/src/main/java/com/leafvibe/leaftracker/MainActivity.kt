@@ -211,15 +211,37 @@ class MainActivity : Activity() {
         for(i in 0 until arr("relationships").length()){val r=arr("relationships").getJSONObject(i);if(space=="Tous"||r.optString("workspace")==space)text(content,"${findName(r.optString("from"))} — ${r.optString("type")} — ${findName(r.optString("to"))}")}
     }
     private fun calendarUI() {
-        text(content,"LeafCalendar · Calendriers locaux",21,true); text(content,"Calendriers thématiques hors ligne, inspirés des usages de TimeTree sans connexion à TimeTree.")
-        button(content,"+ Ajouter un événement"){eventDialog()}
-        for(i in 0 until arr("events").length()){val e=arr("events").getJSONObject(i);if(shown(e))card("📅 ${e.optString("title")}\n${e.optString("date")} ${e.optString("time")} · ${e.optString("calendar")}\n${e.optString("notes")}"){AlertDialog.Builder(this).setItems(arrayOf("Modifier","Supprimer")){_,n->if(n==0)eventDialog(e) else remove("events",e.optString("id"));render()}.show()}}
+        text(content,"LeafCalendar · Agenda",21,true)
+        text(content,"Un tableau local multi-calendriers : famille, amis, personnel et travail.")
+        val modes=LinearLayout(this).apply{orientation=0}
+        listOf("Mois","Semaine","Jour").forEach{label->modes.addView(Button(this).apply{text=label;isAllCaps=false;setOnClickListener{toast("Vue $label : affichage avancé en cours de développement")}},LinearLayout.LayoutParams(0,-2,1f))}
+        content.addView(modes)
+        button(content,"＋ Ajouter un événement"){eventDialog()}
+        button(content,"＋ Ajouter un mémo / une liste"){calendarMemoDialog()}
+        val events=arr("events")
+        val sorted=(0 until events.length()).map{events.getJSONObject(it)}.filter{shown(it)}.sortedBy{it.optString("date")+" "+it.optString("time")}
+        if(sorted.isEmpty())text(content,"Aucun événement enregistré. Crée ton premier rendez-vous.")
+        sorted.forEach{e->
+            val detail="📅 "+e.optString("title")+"\n"+e.optString("date")+" "+e.optString("time")+" · "+e.optString("calendar")+"\n"+e.optString("location")+"\n"+e.optString("notes")+"\nParticipants : "+e.optString("participants")+" · "+e.optString("recurrence")
+            card(detail){AlertDialog.Builder(this).setTitle(e.optString("title")).setItems(arrayOf("Consulter / modifier","Supprimer")){_,n->if(n==0)eventDialog(e)else AlertDialog.Builder(this).setMessage("Supprimer cet événement ?").setNegativeButton("Annuler",null).setPositiveButton("Supprimer"){_,_->remove("events",e.optString("id"));render()}.show()}.show()}
+        }
+        text(content,"Mémos et listes",17,true)
+        for(i in 0 until arr("calendarMemos").length()){val memo=arr("calendarMemos").getJSONObject(i);if(shown(memo))card(memo.optString("title")+"\n"+memo.optString("body")){AlertDialog.Builder(this).setMessage(memo.optString("body")).setPositiveButton("Fermer",null).setNeutralButton("Supprimer"){_,_->remove("calendarMemos",memo.optString("id"));render()}.show()}}
+    }
+    private fun calendarMemoDialog(){
+        val title=input("Titre du mémo / de la liste");val body=input("Contenu ou éléments de la liste")
+        AlertDialog.Builder(this).setTitle("Nouveau mémo").setView(column(title,body)).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->if(title.text.isNotBlank()){arr("calendarMemos").put(JSONObject().put("id",UUID.randomUUID().toString()).put("title",title.text.toString()).put("body",body.text.toString()).put("workspace",if(space=="Professionnel")"Professionnel" else "Privé"));data.put("calendarMemos",arr("calendarMemos"));save();render()}}.show()
     }
     private fun eventDialog(old:JSONObject?=null) {
-        val title=input("Titre");val date=input("Date AAAA-MM-JJ");val time=input("Heure HH:MM");val cal=input("Calendrier : Famille, Amis, Travail");val note=input("Notes")
-        if(old!=null){title.setText(old.optString("title"));date.setText(old.optString("date"));time.setText(old.optString("time"));cal.setText(old.optString("calendar"));note.setText(old.optString("notes"))}
-        AlertDialog.Builder(this).setTitle("Événement").setView(column(title,date,time,cal,note)).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
-            if(title.text.isNullOrBlank())toast("Titre obligatoire") else if(date.text.isNotBlank()&&!date.text.toString().matches(Regex("\\d{4}-\\d{2}-\\d{2}")))toast("Date au format AAAA-MM-JJ") else {val e=old?:JSONObject().put("id",UUID.randomUUID().toString());e.put("title",title.text.toString()).put("date",date.text.toString()).put("time",time.text.toString()).put("calendar",cal.text.toString()).put("notes",note.text.toString()).put("workspace",if(space=="Professionnel")"Professionnel" else "Privé");if(old==null)arr("events").put(e);data.put("events",arr("events"));save();render()}
+        val title=input("Titre de l'événement");val date=input("Date AAAA-MM-JJ");val time=input("Heure HH:MM");val cal=input("Calendrier : Famille, Amis, Travail");val location=input("Lieu / adresse");val participants=input("Participants");val recurrence=input("Récurrence : aucune, quotidienne, hebdomadaire, mensuelle, annuelle");val note=input("Description / notes / commentaires")
+        if(old!=null){title.setText(old.optString("title"));date.setText(old.optString("date"));time.setText(old.optString("time"));cal.setText(old.optString("calendar"));location.setText(old.optString("location"));participants.setText(old.optString("participants"));recurrence.setText(old.optString("recurrence"));note.setText(old.optString("notes"))}
+        val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"));setSelection(if(old?.optString("workspace",space)=="Professionnel")1 else 0)}
+        AlertDialog.Builder(this).setTitle(if(old==null)"Nouvel événement" else "Modifier l'événement").setView(ScrollView(this).apply{addView(column(title,date,time,cal,location,participants,recurrence,note,ws))}).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
+            if(title.text.isNullOrBlank())toast("Titre obligatoire")else if(date.text.isNotBlank()&&!date.text.toString().matches(Regex("\\d{4}-\\d{2}-\\d{2}")))toast("Date au format AAAA-MM-JJ")else{
+                val e=old?:JSONObject().put("id",UUID.randomUUID().toString())
+                e.put("title",title.text.toString()).put("date",date.text.toString()).put("time",time.text.toString()).put("calendar",cal.text.toString()).put("location",location.text.toString()).put("participants",participants.text.toString()).put("recurrence",recurrence.text.toString()).put("notes",note.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé")
+                if(old==null)arr("events").put(e);data.put("events",arr("events"));save();render()
+            }
         }.show()
     }
     private fun notesUI() {
