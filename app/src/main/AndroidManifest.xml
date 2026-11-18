@@ -6,7 +6,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <receiver android:name=".LeafTrackerWidgetProvider" android:exported="false">
+        <receiver android:name=".LeafTrackerWidgetProvider" android:exported="true" android:permission="android.permission.BIND_APPWIDGET" android:label="LeafTracker Calendar">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
