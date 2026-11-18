@@ -220,25 +220,58 @@ class MainActivity : Activity() {
         }}.show()
     }
     private fun socialUI() {
-        text(content,"LeafSocial · Relations",21,true); button(content,"+ Créer une relation"){ relationshipDialog() }
-        var n=0
-        for(i in 0 until arr("relationships").length()) { val r=arr("relationships").getJSONObject(i); if(space!="Tous"&&r.optString("workspace")!=space) continue
-            val a=findName(r.optString("from")); val b=findName(r.optString("to")); card("$a — ${r.optString("type")} → $b\n${r.optString("workspace")} · ${r.optString("notes")}") { AlertDialog.Builder(this).setMessage("Supprimer cette relation ?").setNegativeButton("Annuler",null).setPositiveButton("Supprimer"){_,_->remove("relationships",r.optString("id"));render()}.show() }; n++
+        text(content,"LeafSocial · Cercle relationnel",21,true)
+        text(content,"Famille, amis, entourage, collègues et partenaires. Les relations peuvent être privées ou professionnelles.")
+        button(content,"＋ Ajouter une relation"){relationshipDialog()}
+        val relations=arr("relationships")
+        val filtered=(0 until relations.length()).map{relations.getJSONObject(it)}.filter{shown(it)}
+        filtered.groupBy{it.optString("type","Autre")}.forEach{(kind,items)->
+            text(content,kind,16,true)
+            items.forEach{r->
+                val from=findName(r.optString("from"));val to=findName(r.optString("to"))
+                card(from+" → "+to+"\n"+r.optString("workspace")+" · "+r.optString("lastContact")+"\n"+r.optString("notes")){
+                    AlertDialog.Builder(this).setTitle(from+" · "+kind+" · "+to).setItems(arrayOf("Modifier la relation","Ajouter une interaction","Historique","Supprimer")){_,choice->
+                        when(choice){0->relationshipDialog(r);1->interactionDialog(r);2->showInteractionHistory(r);3->AlertDialog.Builder(this).setMessage("Supprimer cette relation ?").setNegativeButton("Annuler",null).setPositiveButton("Supprimer"){_,_->remove("relationships",r.optString("id"));render()}.show()}
+                    }.show()
+                }
+            }
         }
-        if(n==0) text(content,"Aucune relation enregistrée.")
+        if(filtered.isEmpty())text(content,"Aucune relation. Crée des identités puis relie-les ici.")
+        button(content,"Ouvrir LeafGraph"){tab="LeafGraph";render()}
     }
-    private fun relationshipDialog() {
+    private fun relationshipDialog(old:JSONObject?=null) {
         if(arr("identities").length()<2){toast("Crée au moins deux identités");return}
-        val ids=mutableListOf<String>(); val names=mutableListOf<String>()
-        for(i in 0 until arr("identities").length()){val x=arr("identities").getJSONObject(i);ids.add(x.optString("id"));names.add(x.optString("name"))}
-        val a=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names)}
-        val b=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(1)}
-        val type=input("Type : parent, ami, collègue…"); val note=input("Description"); val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"))}
-        AlertDialog.Builder(this).setTitle("Nouvelle relation").setView(column(type,note,a,b,ws)).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
-            if(a.selectedItemPosition==b.selectedItemPosition) toast("Choisis deux personnes différentes") else {arr("relationships").put(JSONObject().put("id",UUID.randomUUID().toString()).put("from",ids[a.selectedItemPosition]).put("to",ids[b.selectedItemPosition]).put("type",type.text.toString()).put("notes",note.text.toString()) .put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé"));data.put("relationships",arr("relationships"));save();render()}
+        val ids=mutableListOf<String>();val names=mutableListOf<String>()
+        for(i in 0 until arr("identities").length()){val x=arr("identities").getJSONObject(i);ids.add(x.optString("id"));names.add(x.optString("firstName")+" "+x.optString("name"))}
+        val a=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(ids.indexOf(old?.optString("from")).coerceAtLeast(0))}
+        val b=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(ids.indexOf(old?.optString("to")).takeIf{it>=0}?:1)}
+        val type=input("Type : parent, enfant, ami, collègue, partenaire…").apply{setText(old?.optString("type","")?:"")}
+        val note=input("Description du lien").apply{setText(old?.optString("notes","")?:"")}
+        val last=input("Dernier contact (AAAA-MM-JJ)").apply{setText(old?.optString("lastContact","")?:"")}
+        val ws=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,listOf("Privé","Professionnel"));setSelection(if(old?.optString("workspace",space)=="Professionnel")1 else 0)}
+        AlertDialog.Builder(this).setTitle(if(old==null)"Nouvelle relation" else "Modifier la relation").setView(ScrollView(this).apply{addView(column(a,b,type,note,last,ws))}).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
+            if(a.selectedItemPosition==b.selectedItemPosition)toast("Choisis deux personnes différentes")else{
+                val rel=old?:JSONObject().put("id",UUID.randomUUID().toString())
+                rel.put("from",ids[a.selectedItemPosition]).put("to",ids[b.selectedItemPosition]).put("type",type.text.toString()).put("notes",note.text.toString()).put("lastContact",last.text.toString()).put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé")
+                val all=arr("relationships");if(old==null)all.put(rel);data.put("relationships",all);save();render()
+            }
         }.show()
     }
-
+    private fun interactionDialog(rel:JSONObject){
+        val date=input("Date (AAAA-MM-JJ)").apply{setText(LocalDate.now().toString())}
+        val channel=input("Moyen : appel, message, rencontre, e-mail…")
+        val detail=EditText(this).apply{hint="Résumé, sujet abordé, prochaine étape…";minLines=3;gravity=Gravity.TOP}
+        AlertDialog.Builder(this).setTitle("Ajouter une interaction").setView(column(date,channel,detail)).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->
+            val history=rel.optJSONArray("history")?:JSONArray()
+            history.put(JSONObject().put("id",UUID.randomUUID().toString()).put("date",date.text.toString()).put("channel",channel.text.toString()).put("detail",detail.text.toString()))
+            rel.put("history",history).put("lastContact",date.text.toString());data.put("relationships",arr("relationships"));save();render()
+        }.show()
+    }
+    private fun showInteractionHistory(rel:JSONObject){
+        val history=rel.optJSONArray("history")?:JSONArray()
+        val lines=(0 until history.length()).map{val h=history.getJSONObject(it);h.optString("date")+" · "+h.optString("channel")+"\n"+h.optString("detail")}
+        AlertDialog.Builder(this).setTitle("Historique des échanges").setMessage(if(lines.isEmpty())"Aucune interaction enregistrée." else lines.joinToString("\n\n")).setPositiveButton("Fermer",null).setNeutralButton("Ajouter"){_,_->interactionDialog(rel)}.show()
+    }
     private fun graphUI() {
         text(content,"LeafGraph · Tableau blanc",22,true)
         text(content,"Crée des cartes d'idées, déplace-les au doigt et relie-les avec des relations nommées.")
