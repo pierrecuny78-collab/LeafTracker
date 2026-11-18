@@ -4,6 +4,10 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
 import android.util.Base64
 import android.app.AlertDialog
 import android.os.Bundle
@@ -234,12 +238,38 @@ class MainActivity : Activity() {
             if(a.selectedItemPosition==b.selectedItemPosition) toast("Choisis deux personnes différentes") else {arr("relationships").put(JSONObject().put("id",UUID.randomUUID().toString()).put("from",ids[a.selectedItemPosition]).put("to",ids[b.selectedItemPosition]).put("type",type.text.toString()).put("notes",note.text.toString()) .put("workspace",if(ws.selectedItemPosition==1)"Professionnel" else "Privé"));data.put("relationships",arr("relationships"));save();render()}
         }.show()
     }
-    private fun graphUI() {
-        text(content,"LeafGraph · Réseau",21,true); text(content,"Vue initiale des personnes et des liens enregistrés. L'éditeur graphique libre sera développé ensuite.")
-        for(i in 0 until arr("identities").length()){val x=arr("identities").getJSONObject(i);if(shown(x))text(content,"● ${x.optString("name")}")}
-        for(i in 0 until arr("relationships").length()){val r=arr("relationships").getJSONObject(i);if(space=="Tous"||r.optString("workspace")==space)text(content,"${findName(r.optString("from"))} — ${r.optString("type")} — ${findName(r.optString("to"))}")}
-    }
 
+    private fun graphUI() {
+        text(content,"LeafGraph · Tableau blanc",22,true)
+        text(content,"Crée des cartes d'idées, déplace-les au doigt et relie-les avec des relations nommées.")
+        val actions=LinearLayout(this).apply{orientation=0}
+        actions.addView(Button(this).apply{text="＋ Carte";isAllCaps=false;setOnClickListener{val f=input("Texte de la carte");AlertDialog.Builder(this@MainActivity).setTitle("Ajouter une carte").setView(f).setNegativeButton("Annuler",null).setPositiveButton("Ajouter"){_,_->if(f.text.isNotBlank()){val ns=arr("graphNodes");ns.put(JSONObject().put("id",UUID.randomUUID().toString()).put("label",f.text.toString()).put("x",25+(ns.length()%3)*105).put("y",25+(ns.length()/3)*95));data.put("graphNodes",ns);save();render()}}.show()}},LinearLayout.LayoutParams(0,-2,1f))
+        actions.addView(Button(this).apply{text="Relier";isAllCaps=false;setOnClickListener{connectGraphNodes()}},LinearLayout.LayoutParams(0,-2,1f))
+        content.addView(actions)
+        content.addView(GraphBoardView(),LinearLayout.LayoutParams(-1,560))
+        button(content,"＋ Ajouter un modèle de carte mentale"){val ns=arr("graphNodes");listOf("Idée centrale","Famille","Objectif","Projet","Étape","À retenir").forEachIndexed{i,v->ns.put(JSONObject().put("id",UUID.randomUUID().toString()).put("label",v).put("x",25+(i%3)*105).put("y",25+(i/3)*100))};data.put("graphNodes",ns);save();render()}
+        button(content,"Effacer la toile"){AlertDialog.Builder(this).setMessage("Supprimer toutes les cartes et les connexions ?").setNegativeButton("Annuler",null).setPositiveButton("Effacer"){_,_->data.put("graphNodes",JSONArray()).put("graphEdges",JSONArray());save();render()}.show()}
+        text(content,"Astuce : fais glisser les cartes pour organiser ta toile. Le placement est sauvegardé automatiquement.")
+    }
+    private fun connectGraphNodes(){
+        val ns=arr("graphNodes");if(ns.length()<2){toast("Ajoute au moins deux cartes");return}
+        val names=(0 until ns.length()).map{ns.getJSONObject(it).optString("label")}
+        val from=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names)}
+        val to=Spinner(this).apply{adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,names);setSelection(1)}
+        val label=input("Nature du lien : dépend de, parent de, idée liée…")
+        AlertDialog.Builder(this).setTitle("Créer une connexion").setView(column(from,to,label)).setNegativeButton("Annuler",null).setPositiveButton("Relier"){_,_->if(from.selectedItemPosition!=to.selectedItemPosition){arr("graphEdges").put(JSONObject().put("id",UUID.randomUUID().toString()).put("from",ns.getJSONObject(from.selectedItemPosition).optString("id")).put("to",ns.getJSONObject(to.selectedItemPosition).optString("id")).put("label",label.text.toString()));data.put("graphEdges",arr("graphEdges"));save();render()}else toast("Choisis deux cartes différentes")}.show()
+    }
+    private inner class GraphBoardView:View(this@MainActivity){
+        private val p=Paint(Paint.ANTI_ALIAS_FLAG);private var moving=-1;private var dx=0f;private var dy=0f
+        private val fills=intArrayOf(0xFFDDEFE2.toInt(),0xFFE0E9F8.toInt(),0xFFFFEAD5.toInt(),0xFFF3E2ED.toInt(),0xFFE9E2F7.toInt())
+        override fun onDraw(c:Canvas){super.onDraw(c);c.drawColor(0xFFFAFCFA.toInt());p.color=0xFFE8EEE9.toInt();p.strokeWidth=1f;var x=0f;while(x<width){c.drawLine(x,0f,x,height.toFloat(),p);x+=30};var y=0f;while(y<height){c.drawLine(0f,y,width.toFloat(),y,p);y+=30}
+            val ns=arr("graphNodes");val es=arr("graphEdges")
+            for(i in 0 until es.length()){val e=es.getJSONObject(i);val f=findGraphNode(e.optString("from"));val t=findGraphNode(e.optString("to"));if(f!=null&&t!=null){val x1=f.optDouble("x").toFloat()+44;val y1=f.optDouble("y").toFloat()+28;val x2=t.optDouble("x").toFloat()+44;val y2=t.optDouble("y").toFloat()+28;p.color=0xFF548264.toInt();p.strokeWidth=3f;c.drawLine(x1,y1,x2,y2,p);p.textSize=10f;c.drawText(e.optString("label"),(x1+x2)/2,(y1+y2)/2,p)}}
+            for(i in 0 until ns.length()){val n=ns.getJSONObject(i);val nx=n.optDouble("x").toFloat();val ny=n.optDouble("y").toFloat();p.color=fills[i%fills.size];c.drawRoundRect(RectF(nx,ny,nx+92,ny+58),11f,11f,p);p.color=0xFF203B2B.toInt();p.textSize=12f;p.typeface=Typeface.DEFAULT_BOLD;val label=n.optString("label");c.drawText(if(label.length>13)label.take(12)+"…" else label,nx+6,ny+33,p)}
+        }
+        override fun onTouchEvent(e:MotionEvent):Boolean{val ns=arr("graphNodes");when(e.action){MotionEvent.ACTION_DOWN->{moving=-1;for(i in ns.length()-1 downTo 0){val n=ns.getJSONObject(i);val x=n.optDouble("x").toFloat();val y=n.optDouble("y").toFloat();if(e.x>=x&&e.x<=x+92&&e.y>=y&&e.y<=y+58){moving=i;dx=e.x-x;dy=e.y-y;break}};return true};MotionEvent.ACTION_MOVE->{if(moving>=0){val n=ns.getJSONObject(moving);n.put("x",(e.x-dx).coerceIn(0f,(width-94).coerceAtLeast(0).toFloat()).toDouble());n.put("y",(e.y-dy).coerceIn(0f,(height-60).coerceAtLeast(0).toFloat()).toDouble());invalidate()};return true};MotionEvent.ACTION_UP->{if(moving>=0){data.put("graphNodes",ns);save();moving=-1};return true}};return true}
+    }
+    private fun findGraphNode(id:String):JSONObject?{val ns=arr("graphNodes");for(i in 0 until ns.length()){val n=ns.getJSONObject(i);if(n.optString("id")==id)return n};return null}
     private fun collectionUI(title:String,key:String,description:String,labels:Array<String>) {
         text(content,title,22,true); text(content,description)
         button(content,"＋ Ajouter"){collectionDialog(key,labels,null)}
