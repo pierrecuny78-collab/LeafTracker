@@ -245,11 +245,28 @@ class MainActivity : Activity() {
         val actions=LinearLayout(this).apply{orientation=0}
         actions.addView(Button(this).apply{text="＋ Carte";isAllCaps=false;setOnClickListener{val f=input("Texte de la carte");AlertDialog.Builder(this@MainActivity).setTitle("Ajouter une carte").setView(f).setNegativeButton("Annuler",null).setPositiveButton("Ajouter"){_,_->if(f.text.isNotBlank()){val ns=arr("graphNodes");ns.put(JSONObject().put("id",UUID.randomUUID().toString()).put("label",f.text.toString()).put("x",25+(ns.length()%3)*105).put("y",25+(ns.length()/3)*95));data.put("graphNodes",ns);save();render()}}.show()}},LinearLayout.LayoutParams(0,-2,1f))
         actions.addView(Button(this).apply{text="Relier";isAllCaps=false;setOnClickListener{connectGraphNodes()}},LinearLayout.LayoutParams(0,-2,1f))
+        actions.addView(Button(this).apply{text="Gérer";isAllCaps=false;setOnClickListener{graphManageCards()}},LinearLayout.LayoutParams(0,-2,1f))
         content.addView(actions)
         content.addView(GraphBoardView(),LinearLayout.LayoutParams(-1,560))
         button(content,"＋ Ajouter un modèle de carte mentale"){val ns=arr("graphNodes");listOf("Idée centrale","Famille","Objectif","Projet","Étape","À retenir").forEachIndexed{i,v->ns.put(JSONObject().put("id",UUID.randomUUID().toString()).put("label",v).put("x",25+(i%3)*105).put("y",25+(i/3)*100))};data.put("graphNodes",ns);save();render()}
         button(content,"Effacer la toile"){AlertDialog.Builder(this).setMessage("Supprimer toutes les cartes et les connexions ?").setNegativeButton("Annuler",null).setPositiveButton("Effacer"){_,_->data.put("graphNodes",JSONArray()).put("graphEdges",JSONArray());save();render()}.show()}
         text(content,"Astuce : fais glisser les cartes pour organiser ta toile. Le placement est sauvegardé automatiquement.")
+    }
+    private fun graphManageCards(){
+        val ns=arr("graphNodes")
+        if(ns.length()==0){toast("Aucune carte");return}
+        val labels=(0 until ns.length()).map{ns.getJSONObject(it).optString("label")}
+        AlertDialog.Builder(this).setTitle("Gérer les cartes").setItems(labels.toTypedArray()){_,index->
+            val node=ns.getJSONObject(index)
+            AlertDialog.Builder(this).setTitle(node.optString("label")).setItems(arrayOf("Renommer","Couleur suivante","Dupliquer","Supprimer")){_,choice->
+                when(choice){
+                    0->{val f=input("Nom de la carte").apply{setText(node.optString("label"))};AlertDialog.Builder(this).setView(f).setNegativeButton("Annuler",null).setPositiveButton("Enregistrer"){_,_->node.put("label",f.text.toString());data.put("graphNodes",ns);save();render()}.show()}
+                    1->{node.put("color",(node.optInt("color")+1)%5);data.put("graphNodes",ns);save();render()}
+                    2->{ns.put(JSONObject(node.toString()).put("id",UUID.randomUUID().toString()).put("x",node.optDouble("x")+24).put("y",node.optDouble("y")+24));data.put("graphNodes",ns);save();render()}
+                    3->{val next=JSONArray();for(i in 0 until ns.length())if(i!=index)next.put(ns.getJSONObject(i));data.put("graphNodes",next);val edges=JSONArray();for(i in 0 until arr("graphEdges").length()){val e=arr("graphEdges").getJSONObject(i);if(e.optString("from")!=node.optString("id")&&e.optString("to")!=node.optString("id"))edges.put(e)};data.put("graphEdges",edges);save();render()}
+                }
+            }.show()
+        }.show()
     }
     private fun connectGraphNodes(){
         val ns=arr("graphNodes");if(ns.length()<2){toast("Ajoute au moins deux cartes");return}
